@@ -49,7 +49,7 @@ Install again, after dependencies have been installed. You should now be done if
 
 ``` r
 library(miMediation)
-help(package="miMediation")
+help(package = "miMediation")
 ?data.cecal
 ?phyloMed
 ?prepareTree
@@ -58,7 +58,7 @@ help(package="miMediation")
 If you install the package manually from source, a vignette describing the use of the package is available from within R. Load the package and then use the vignette function.
 
 ``` r
-vignette("miMediation",package="miMediation")
+vignette("miMediation",package = "miMediation")
 ```
 
 Otherwise, it will not build vignettes by default if you install the package from github because they’re time consuming and may require additional packages. You can force building (take ~7 mins) with:
