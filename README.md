@@ -20,7 +20,7 @@ You can install the package from github with:
 ``` r
 devtools::install_github("KiRinHong/miMediation")
 ```
-The package source can be downloaded from https://tangzheng1.github.io/tanglab/software, which can be installed with:
+You can download the package source and install it with:
 
 ``` r
 install.packages("miMediation_0.1.tar.gz", repos = NULL, type ="source") 
