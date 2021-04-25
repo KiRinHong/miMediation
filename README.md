@@ -21,20 +21,46 @@ You can install the package from github with:
 ``` r
 devtools::install_github("KiRinHong/miMediation")
 ```
-You can download the [package source](https://github.com/KiRinHong/miMediation/blob/main/miMediation_0.1.tar.gz) and install it with:
+You can download the [package source](https://github.com/KiRinHong/miMediation/blob/main/miMediation_0.1.tar.gz) and install it manually with:
 
 ``` r
-install.packages("miMediation_0.1.tar.gz", repos = NULL, type ="source") 
+install.packages("miMediation_0.1.tar.gz", repos = NULL, type ="source", dependencies = c("Depends", "Imports")) 
 ```
 
-## Vignette
+## Troubleshoot Dependencies
 
-If you install the package from source, a vignette describing the use of the package is available from within R. Load the package and then use the vignette function.
+At this point, there may be complaints about missing dependencies. To install missing dependencies on either [CRAN](https://cran.r-project.org/) or [Bioconductor](http://bioconductor.org/install/), start a fresh R session and enter the following:
+
+``` r
+# For CRAN
+install.packages("missing_package")
+# For Biocondocutor
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("missing_package") 
+# ... and so on
+```
+
+## Re-attempt miMediation Installation
+
+Install again, after dependencies have been installed. You should now be done if the installation was successful.
+
+## Load Package, Explore Function Documentation and Vignette
 
 ``` r
 library(miMediation)
+help(package="miMediation")
+?data.cecal
+?phyloMed
+?prepareTree
+```
+
+If you install the package manually from source, a vignette describing the use of the package is available from within R. Load the package and then use the vignette function.
+
+``` r
 vignette("miMediation",package="miMediation")
 ```
+
 Otherwise, it will not build vignettes by default if you install the package from github because they’re time consuming and may require additional packages. You can force building with:
 
 ``` r
@@ -44,7 +70,7 @@ Then, the vignette would be availabe from within R.
 
 ## Getting help
 
-Please use the issues tab (https://github.com/KiRinHong/miMediation/issues) to file any bugs or suggestions.
+Please use the [issue tracker] (https://github.com/KiRinHong/miMediation/issues) to post any bugs, suggestions, or even the installation was not successful.
 
 ## License
 
