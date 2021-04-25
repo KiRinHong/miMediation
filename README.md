@@ -1,6 +1,6 @@
 ## miMediation
 
-[miMediation](https://github.com/KiRinHong/miMediation) is an package for performing phylogeny-based mediation test [PhyloMed](https://github.com/KiRinHong/PhyloMed) for microbiome data.
+[miMediation](https://github.com/KiRinHong/miMediation) is a package for performing phylogeny-based mediation test [PhyloMed](https://github.com/KiRinHong/PhyloMed) for microbiome data.
 
 See the following:
 
@@ -19,7 +19,7 @@ You can install the package from github with:
 ``` r
 devtools::install_github("KiRinHong/miMediation")
 ```
-The Package source can be downloaded from https://tangzheng1.github.io/tanglab/software, which can be installed with:
+The package source can be downloaded from https://tangzheng1.github.io/tanglab/software, which can be installed with:
 
 ``` r
 install.packages(miMediation_0.1.tar.gz, repos = NULL, type ="source") 
