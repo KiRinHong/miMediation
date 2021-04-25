@@ -42,7 +42,7 @@ $$E\left( \log \left( \frac{M_{ij1}}{M_{ij2}}\right) \right)\ = \alpha^{\rm T}_{
 $$g(E(Y_i)) = \beta^{\rm T}_{jX} {\bf X}_i + \beta_{jT} T_i  + \beta_{j} \log\left(\frac{M_{ij1}}{M_{ij2}}\right)$$
 where $g(\cdot)$ is the link function depending on the type of the outcome and we omit the intercept term in both models as it can be absorbed into ${\bf X}_i$.
 
-Under potential outcome framework and assumptions of no unmeasured confounding variables, it leads to the null hypothesis $$H_0^j=\alpha_j\beta_j=0$$, which is equivalent to the union of three disjoint component null hypotheses
+Under potential outcome framework (@vanderweele2015explanation) and assumptions of no unmeasured confounding variables, it leads to the null hypothesis $$H_0^j=\alpha_j\beta_j=0$$, which is equivalent to the union of three disjoint component null hypotheses
 
 \begin{align} 
 H^{j}_{00}&: \alpha_j = \beta_{j} = 0,\\
@@ -58,36 +58,6 @@ $$Pr(P_{\max_j} \leq p_{\max_j})=\pi_{00} p^2_{\max_j} + \pi_{10} p_{\max_j} Pr(
 In this formula, we need to estimate three component probabilities: $\pi_{00}$, $\pi_{10}$, and $\pi_{01}$, and two power functions evaluated at $p_{\max_j}$: $Pr(P_{\alpha_j} \leq p_{\max_j} \mid \alpha_j \neq 0)$ and $Pr(P_{\beta_j} \leq p_{\max_j} \mid \beta_j \neq 0)$. 
 
 After obtaining the $p$-values on all internal nodes, we apply Benjamini-Hochberg (BH) false discovery rate procedure (@benjamini1995controlling) to identify a collection of nodes on the phylogenetic tree with significant mediation effects. To test the global mediation null hypothesis $H_0: \cap_{j=1}^J H^j_0$, we apply the Simes' method (@simes1986improved) to combine local mediation $p$-values.
-
-## System requirements and install guide
-
-The package development version has been tested on the following systems:
-
-  - Ubuntu 18.04.4 LTS (R version 3.6.2)
-  
-Before installing the `miMediation` package, users should have R version 3.5.0 or higher.
-
-`miMediation` package could be installed and loaded as follows:
-
-```{r eval=FALSE}
-devtools::install_github("KiRinHong/miMediation")
-```
-
-```{r}
-library(miMediation)
-```
-
-## Package dependencies
-
-`miMediation` package depends on several R packages (`fdrtool`, `SKAT`, `ggplot2`, `ggtree`, `phyloseq`, `ape`, `TreeTools`), which will be downloaded when installing it. The versions of these R packages are listed as follows:
-
-  - `fdrtool_1.2.16`
-  - `SKAT_2.0.1` 
-  - `ggplot2_3.3.3`
-  - `ggtree_1.16.6`
-  - `phyloseq_1.28.0`
-  - `ape_5.4.1`
-  - `TreeTools_1.4.2`
   
 ## Real data application: Antibiotic$\sim$Microbiome$\sim$BodyFat(%)
 
@@ -96,6 +66,7 @@ It is well-known that low dose antibiotics have been used widely to stimulate we
 The data here is from an experiment conducted by @cho2012antibiotics, in which young mice were treated by different low-dose antibiotic and evaluated changes in body fat and compositions of the microbiome in cecal and fecal samples. The mice in antibiotic group were heavier than those in the control group. We will show how to perform `phyloMed` function by focusing on cecal samples.
 
 ```{r }
+library(miMediation)
 # Load data
 data(data.cecal)
 # Take a look at the data

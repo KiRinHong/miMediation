@@ -10,13 +10,8 @@ knitr::opts_chunk$set(
 ## ----demo-plot, fig.width=8, fig.height=6, echo=FALSE-------------------------
 knitr::include_graphics("exampleFig.png")
 
-## ----eval=FALSE---------------------------------------------------------------
-#  devtools::install_github("KiRinHong/miMediation")
-
 ## -----------------------------------------------------------------------------
 library(miMediation)
-
-## -----------------------------------------------------------------------------
 # Load data
 data(data.cecal)
 # Take a look at the data
