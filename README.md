@@ -22,12 +22,20 @@ devtools::install_github("KiRinHong/miMediation")
 
 ## Vignette
 
-A vignette describing the use of the package is available from within R. Load the package and then use the vignette function.
+The above code will not build vignettes by default because they’re time consuming and may require additional packages. You can force building with:
+
+``` r
+devtools::install_github("KiRinHong/miMediation", build_vignettes = TRUE)
+```
+
+Then, a vignette describing the use of the package is available from within R. Load the package and then use the vignette function.
 
 ``` r
 library(miMediation)
 vignette("miMediation",package="miMediation")
 ```
+
+Or directly download miMediation.html and show in browser.
 
 ## Getting help
 
