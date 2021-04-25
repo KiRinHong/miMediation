@@ -1,1 +1,5 @@
-Makefile
+Makefile$
+^.*\.Rproj$         # Designates the directory as an RStudio Project
+^\.Rproj\.user$     # Used by RStudio for temporary files
+^\.travis\.yml$     # Used by Travis-CI for continuous integration testing
+^\.github$          # Contributing guidelines, CoC, issue templates, etc.
