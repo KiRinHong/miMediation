@@ -20,7 +20,7 @@ You can install the package from github with:
 ``` r
 devtools::install_github("KiRinHong/miMediation")
 ```
-You can download the package source and install it with:
+You can download the [package source](https://github.com/KiRinHong/miMediation/blob/main/miMediation_0.1.tar.gz) and install it with:
 
 ``` r
 install.packages("miMediation_0.1.tar.gz", repos = NULL, type ="source") 
