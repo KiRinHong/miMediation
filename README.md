@@ -19,23 +19,26 @@ You can install the package from github with:
 ``` r
 devtools::install_github("KiRinHong/miMediation")
 ```
+The Package source can be downloaded from https://tangzheng1.github.io/tanglab/software, which can be installed with:
+
+``` r
+install.packages(miMediation_0.1.tar.gz, repos = NULL, type ="source") 
+```
 
 ## Vignette
 
-The above code will not build vignettes by default because they’re time consuming and may require additional packages. You can force building with:
-
-``` r
-devtools::install_github("KiRinHong/miMediation", build_vignettes = TRUE)
-```
-
-Then, a vignette describing the use of the package is available from within R. Load the package and then use the vignette function.
+If you install the package from source, a vignette describing the use of the package is available from within R. Load the package and then use the vignette function.
 
 ``` r
 library(miMediation)
 vignette("miMediation",package="miMediation")
 ```
+Otherwise, it will not build vignettes by default if you install the package from github because they’re time consuming and may require additional packages. You can force building with:
 
-Or directly download miMediation.html and show in browser.
+``` r
+devtools::install_github("KiRinHong/miMediation", build_vignettes = TRUE)
+```
+Then, the vignette would be availabe from within R.
 
 ## Getting help
 
