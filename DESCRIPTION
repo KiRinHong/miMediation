@@ -9,6 +9,7 @@ Depends: R (>= 3.5.0)
 Encoding: UTF-8
 License: GPL-3
 LazyData: true
+biocViews:
 Imports:
     ape,
     fdrtool, 
