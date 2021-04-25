@@ -4,7 +4,7 @@
 
 See the following:
 
-- Hong, Q., Chen G., and Tang Z.-Z.. (2021) A phylogeny-based test of mediation effect in microbiome. Manuscript.
+- Hong, Q., Chen G., and Tang Z-Z.. (2021) A phylogeny-based test of mediation effect in microbiome. Manuscript.
 
 ## Author
 
