@@ -70,7 +70,7 @@ Then, the vignette would be availabe from within R.
 
 ## Getting help
 
-Please use the [issue tracker] (https://github.com/KiRinHong/miMediation/issues) to post any bugs, suggestions, or the installation problem.
+Please use the [issue tracker](https://github.com/KiRinHong/miMediation/issues) to post any bugs, suggestions, or the installation problem.
 
 ## License
 
