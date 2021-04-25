@@ -2,11 +2,11 @@
 
 [miMediation](https://github.com/KiRinHong/miMediation) is a R package for performing phylogeny-based mediation test [(PhyloMed)](https://github.com/KiRinHong/PhyloMed) for microbiome data.
 
-See the following:
+See the following for detailted and up-to-date documentation:
 
-- [Package manual](https://github.com/KiRinHong/miMediation/blob/main/miMediation_0.1.pdf)
-- [Package vignette](https://github.com/KiRinHong/miMediation/blob/main/miMediation_vignette.pdf)
-- Hong, Q., Chen G., and Tang Z-Z.. (2021) A phylogeny-based test of mediation effect in microbiome. Manuscript.
+- The [miMediation R package manual](https://github.com/KiRinHong/miMediation/blob/main/miMediation_0.1.pdf).
+- The [tutorial walkthough of the proposed PhyloMed](https://github.com/KiRinHong/miMediation/blob/main/miMediation_vignette.pdf)
+- The articles: Hong, Q., Chen G., and Tang Z-Z.. (2021) A phylogeny-based test of mediation effect in microbiome. Manuscript.
 
 ## Author
 
@@ -70,7 +70,7 @@ Then, the vignette would be availabe from within R.
 
 ## Getting help
 
-Please use the [issue tracker] (https://github.com/KiRinHong/miMediation/issues) to post any bugs, suggestions, or even the installation was not successful.
+Please use the [issue tracker] (https://github.com/KiRinHong/miMediation/issues) to post any bugs, suggestions, or the installation problem.
 
 ## License
 
