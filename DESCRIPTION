@@ -1,0 +1,28 @@
+Package: miMediation
+Version: 0.1
+Date: 2021-04-06
+Title: Mediation Test for Microbime Data
+Description: A phylogeny-based test of mediation effect in microbiome.
+Author: Qilin Hong
+Maintainer: Qilin Hong <qhong8@wisc.edu>
+Depends: R (>= 3.5.0)
+Encoding: UTF-8
+License: GPL-3
+LazyData: true
+Imports:
+    ape,
+    fdrtool, 
+    ggplot2,
+    ggtree,
+    phyloseq,
+    SKAT,
+    TreeTools
+Suggests:
+    knitr,
+    prettydoc,
+    rmarkdown,
+    covr
+RoxygenNote: 7.1.1
+VignetteBuilder: 
+    knitr,
+    prettydoc
