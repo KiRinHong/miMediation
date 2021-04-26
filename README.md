@@ -61,7 +61,7 @@ If you install the package manually from source, a vignette describing the use o
 vignette("miMediation", package = "miMediation")
 ```
 
-Otherwise, it will not build vignettes by default if you install the package from github because they’re time consuming and may require additional packages. You can force building (take ~7 mins) with:
+Otherwise, it will not build vignette by default if you install the package from github because they’re time consuming and may require additional packages (here, require `prettydoc` R package, install it before building vigentte). You can force building (take ~7 mins) with:
 
 ``` r
 devtools::install_github("KiRinHong/miMediation", build_vignettes = TRUE)
