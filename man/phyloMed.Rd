@@ -9,6 +9,8 @@ phyloMed(
   mediators,
   outcome,
   tree,
+  method = "JC",
+  lambda = 0.5,
   confounders = NULL,
   interaction = FALSE,
   fdr.alpha = 0.05,
@@ -28,9 +30,15 @@ Row name contains the subject ID and column name contains the taxon name.}
 \item{tree}{A \code{phylo-class} object. 
 The tip labels in the \code{tree} should overlap with the column names in the \code{mediators} matrix.}
 
+\item{method}{An optional character string denotes the method to used in estimate proportion of null. Can be abbreviated.
+Default method is \code{"JC"}, an alternative method is \code{"Storey"}.}
+
+\item{lambda}{An optional numeric tuning parameter between 0 and 1, need to be specified when the method is \code{"Storey"}.
+Default is \code{0.5}.}
+
 \item{confounders}{An optional numeric vector or matrix containing confounders that may affect the 
 treatment, mediators and outcome. 
-Each row is a subject and each column is a specific counfounder, e.g., age or sex. 
+Each row is a subject and each column is a specific confounder, e.g., age or sex. 
 Default is \code{NULL}.}
 
 \item{interaction}{An optional logical value. If \code{TRUE}, the interaction term between treatment and mediator 

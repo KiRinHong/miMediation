@@ -21,9 +21,13 @@
 #' @param tree A \code{phylo-class} object. 
 #' The tip labels in the \code{tree} should overlap with the column names in the \code{mediators} matrix. 
 #' @seealso \code{\link{prepareTree}}
+#' @param method An optional character string denotes the method to used in estimate proportion of null. Can be abbreviated.
+#' Default method is \code{"JC"}, an alternative method is \code{"Storey"}.
+#' @param lambda An optional numeric tuning parameter between 0 and 1, need to be specified when the method is \code{"Storey"}.
+#' Default is \code{0.5}.
 #' @param confounders An optional numeric vector or matrix containing confounders that may affect the 
 #' treatment, mediators and outcome. 
-#' Each row is a subject and each column is a specific counfounder, e.g., age or sex. 
+#' Each row is a subject and each column is a specific confounder, e.g., age or sex. 
 #' Default is \code{NULL}.
 #' @param interaction An optional logical value. If \code{TRUE}, the interaction term between treatment and mediator 
 #' will be taken into account. 
@@ -84,7 +88,8 @@
 #' @import ggplot2 ggtree
 #' @export
 
-phyloMed <- function(treatment, mediators, outcome, tree, confounders = NULL, interaction = FALSE, fdr.alpha = 0.05, 
+phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda = 0.5,
+                     confounders = NULL, interaction = FALSE, fdr.alpha = 0.05, 
                      n.perm = NULL, verbose = FALSE, graph = FALSE){
   
   if(sum(is.na(cbind(treatment, mediators, outcome, confounders)))>0) stop("Input data contain NAs!")
@@ -130,6 +135,8 @@ phyloMed <- function(treatment, mediators, outcome, tree, confounders = NULL, in
     M2 = M + 0.5
   }
   
+  method = match.arg(tolower(method), choices = c("jc", "storey"))
+  
   treestructure = .phylostructure(tree)
   
   if(is.null(confounders)){ 
@@ -139,6 +146,9 @@ phyloMed <- function(treatment, mediators, outcome, tree, confounders = NULL, in
   }else{
     conf = cbind(1, confounders)
   }
+  
+  # compute residual forming matrix Rconf
+  Rconf = diag(nrow(conf)) - conf %*% solve(t(conf) %*% conf) %*% t(conf)
   
   Trt = treatment
   ## here perform tree-based method
@@ -254,7 +264,7 @@ phyloMed <- function(treatment, mediators, outcome, tree, confounders = NULL, in
         Nexc = 0
         alpha.stat.perm = numeric(B.max)
         while (Nexc < R.sel & m < B.max) {
-          x2.1_perm = qr.resid(fit$qr, sample(Trt))
+          x2.1_perm = qr.resid(fit$qr, Rconf[sample(nrow(Rconf)),] %*% Trt)
           stat_perm = (sum(x2.1_perm*r))^2/sum(x2.1_perm*x2.1_perm)/dispersion
           if(stat_perm >= stat) Nexc = Nexc + 1
           alpha.stat.perm[m] = stat_perm
@@ -300,12 +310,12 @@ phyloMed <- function(treatment, mediators, outcome, tree, confounders = NULL, in
         beta.stat.perm = numeric(B.max)
         while (Nexc < R.sel & m < B.max) {
           if(interaction){
-            tmp_beta = .test_beta(outcome, G[sample(nrow(G)),], Trt, conf, obj = obj, test.type="vc") # est[1] ~ mediator est[2] ~ exposure * mediator
+            tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, obj = obj, test.type="vc") # est[1] ~ mediator est[2] ~ exposure * mediator
           }else{
             if(length(unique(outcome)) > 2){
-              tmp_beta = .test_beta(outcome, sample(G), Trt, conf, resid.obs = mod.resid, s2.obs = mod.s2, test.type="mv")
+              tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, resid.obs = mod.resid, s2.obs = mod.s2, test.type="mv")
             }else{
-              tmp_beta = .test_beta(outcome, sample(G), Trt, conf, est.obs = mod.est, test.type="mv")
+              tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, est.obs = mod.est, test.type="mv")
             }
           }
           if(tmp_beta$stat >= TestBeta$stat) Nexc = Nexc + 1
@@ -342,9 +352,14 @@ phyloMed <- function(treatment, mediators, outcome, tree, confounders = NULL, in
     }
   }
   
-  alpha1.asym = .pi0_JC(na.omit(z.stat.alpha))
-  alpha2.asym = .pi0_JC(na.omit(z.stat.beta))
-  tmp.asym = .nullEstimation(pval.alpha.asym, pval.beta.asym, alpha1.asym, alpha2.asym)
+  if(method == "jc"){
+    alpha1.asym = .pi0_JC(na.omit(z.stat.alpha))
+    alpha2.asym = .pi0_JC(na.omit(z.stat.beta))
+    tmp.asym = .nullEstimation_prod(pval.alpha.asym, pval.beta.asym, alpha1.asym, alpha2.asym)
+  }else if(method == "storey"){
+    tmp.asym = .nullEstimation_minus(pval.alpha.asym, pval.beta.asym, lambda)
+  }
+
   rawp.asym = tmp.asym$rawp
   if(length(which(rawp.asym==0))>0)  rawp.asym[rawp.asym == 0] = runif(length(which(rawp.asym==0)), min = 0, max = 1e-7)
   null.prop.est.asym = c(tmp.asym$alpha00, tmp.asym$alpha10, tmp.asym$alpha01)
@@ -383,9 +398,14 @@ phyloMed <- function(treatment, mediators, outcome, tree, confounders = NULL, in
   
   
   if(!is.null(n.perm)){
-    alpha1.perm = .pi0_JC(na.omit(abs(qnorm(pval.alpha.perm/2, lower.tail = FALSE))*sign(z.stat.alpha)))
-    alpha2.perm = .pi0_JC(na.omit(abs(qnorm(pval.beta.perm/2, lower.tail = FALSE))*sign(z.stat.beta)))
-    tmp.perm = .nullEstimation(pval.alpha.perm, pval.beta.perm, alpha1.perm, alpha2.perm)
+    if(method == "jc"){
+      alpha1.perm = .pi0_JC(na.omit(abs(qnorm(pval.alpha.perm/2, lower.tail = FALSE))*sign(z.stat.alpha)))
+      alpha2.perm = .pi0_JC(na.omit(abs(qnorm(pval.beta.perm/2, lower.tail = FALSE))*sign(z.stat.beta)))
+      tmp.perm = .nullEstimation_prod(pval.alpha.perm, pval.beta.perm, alpha1.perm, alpha2.perm)
+    }else if(method == "storey"){
+      tmp.perm = .nullEstimation_minus(pval.alpha.perm, pval.beta.perm, lambda)
+    }
+
     rawp.perm = tmp.perm$rawp
     if(length(which(rawp.perm==0))>0)  rawp.perm[rawp.perm == 0] = runif(length(which(rawp.perm==0)), min = 0, max = 1e-7)
     null.prop.est.perm = c(tmp.perm$alpha00, tmp.perm$alpha10, tmp.perm$alpha01)
@@ -731,7 +751,7 @@ phyloMed <- function(treatment, mediators, outcome, tree, confounders = NULL, in
   return(tmp)
 }
 
-.nullEstimation <- function (pval.alpha, pval.beta, alpha1, alpha2) {
+.nullEstimation_prod <- function (pval.alpha, pval.beta, alpha1, alpha2) {
   # alpha00: a=0 and b=0
   # alpha01: a=0 and b!=0
   # alpha10: a!=0 and b=0
@@ -739,8 +759,6 @@ phyloMed <- function(treatment, mediators, outcome, tree, confounders = NULL, in
   idx.na = which(!complete.cases(input.pvals))
   input.pvals = input.pvals[complete.cases(input.pvals), ]
   
-  # alpha1 = min(mean(input.pvals[,1] >= lambda)/(1 - lambda), 1)
-  # alpha2 = min(mean(input.pvals[,2] >= lambda)/(1 - lambda), 1)
   alpha00 = alpha1 * alpha2
   alpha01 = alpha1 * (1-alpha2)
   alpha10 = (1-alpha1) * alpha2
@@ -812,6 +830,87 @@ phyloMed <- function(treatment, mediators, outcome, tree, confounders = NULL, in
     rawp.wNA = rawp
   }
   
+  rslt = list(alpha10 = alpha10, alpha01 = alpha01, alpha00 = alpha00, alpha1 = alpha1, alpha2 = alpha2, rawp = rawp.wNA)
+  return(rslt)
+}
+
+.nullEstimation_minus <- function (pval.alpha, pval.beta, lambda) {
+  # alpha00: a=0 and b=0
+  # alpha01: a=0 and b!=0
+  # alpha10: a!=0 and b=0
+  
+  input.pvals = cbind(pval.alpha, pval.beta)
+  idx.na = which(!complete.cases(input.pvals))
+  input.pvals = input.pvals[complete.cases(input.pvals), ]
+  
+  alpha1 = min(mean(input.pvals[,1]>=lambda)/(1-lambda), 1)
+  alpha2 = min(mean(input.pvals[,2]>=lambda)/(1-lambda), 1)
+  alpha00 = min(mean(input.pvals[,2]>=lambda & input.pvals[,1]>=lambda)/(1-lambda)^2, 1)
+  alpha10 = max(alpha2-alpha00, 0)
+  alpha01 = max(alpha1-alpha00, 0)
+  
+  tmp = pmax(input.pvals[,1], input.pvals[,2])
+  nmed = length(tmp)
+  cdf12 = input.pvals
+  input.pvals = input.pvals + runif(tmp, min = 0, max = 1e-7)
+  xx1 = c(0, input.pvals[order(input.pvals[, 1]), 1])
+  yy1 = c(0, seq(1, nmed, by = 1)/nmed)
+  gfit1 = gcmlcm(xx1, yy1, type = "lcm")
+  xknots1 = gfit1$x.knots[-1]
+  Fknots1 = cumsum(diff(gfit1$x.knots) * gfit1$slope.knots)
+  xx2 = c(0, input.pvals[order(input.pvals[, 2]), 2])
+  yy2 = c(0, seq(1, nmed, by = 1)/nmed)
+  gfit2 = gcmlcm(xx2, yy2, type = "lcm")
+  xknots2 = gfit2$x.knots[-1]
+  Fknots2 = cumsum(diff(gfit2$x.knots) * gfit2$slope.knots)
+  if (alpha1 != 1) 
+    Fknots1 = (Fknots1 - alpha1 * xknots1)/(1 - alpha1)
+  else Fknots1 = rep(0, length(xknots1))
+  if (alpha2 != 1) 
+    Fknots2 = (Fknots2 - alpha2 * xknots2)/(1 - alpha2)
+  else Fknots2 = rep(0, length(xknots2))
+  orderq1 = orderq2 = gcdf1 = gcdf2 = tmp
+  for (i in 1:length(xknots1)) {
+    if (i == 1) {
+      gcdf1[orderq1 <= xknots1[i]] = (Fknots1[i]/xknots1[i]) * orderq1[orderq1 <= xknots1[i]]
+    }
+    else {
+      if (sum(orderq1 > xknots1[i - 1] & orderq1 <= xknots1[i]) > 0) {
+        temp = orderq1[orderq1 > xknots1[i - 1] & orderq1 <= xknots1[i]]
+        gcdf1[orderq1 > xknots1[i - 1] & orderq1 <= 
+                xknots1[i]] = Fknots1[i - 1] + (Fknots1[i] - 
+                                                  Fknots1[i - 1])/(xknots1[i] - xknots1[i - 
+                                                                                          1]) * (temp - xknots1[i - 1])
+      }
+    }
+  }
+  for (i in 1:length(xknots2)) {
+    if (i == 1) {
+      gcdf2[orderq2 <= xknots2[i]] = (Fknots2[i]/xknots2[i]) * orderq2[orderq2 <= xknots2[i]]
+    }
+    else {
+      if (sum(orderq2 > xknots2[i - 1] & orderq2 <= xknots2[i]) > 0) {
+        temp = orderq2[orderq2 > xknots2[i - 1] & orderq2 <= xknots2[i]]
+        gcdf2[orderq2 > xknots2[i - 1] & orderq2 <= 
+                xknots2[i]] = Fknots2[i - 1] + (Fknots2[i] - 
+                                                  Fknots2[i - 1])/(xknots2[i] - xknots2[i - 
+                                                                                          1]) * (temp - xknots2[i - 1])
+      }
+    }
+  }
+  gcdf1 = ifelse(gcdf1 > 1, 1, gcdf1)
+  gcdf2 = ifelse(gcdf2 > 1, 1, gcdf2)
+  cdf12[, 1] = gcdf1
+  cdf12[, 2] = gcdf2
+  rawp = (tmp * cdf12[, 2] * alpha01) + (tmp * cdf12[, 1] * alpha10) + (tmp^2 * alpha00)
+  
+  rawp.wNA = numeric(length(pval.alpha))
+  if(length(idx.na) > 0){
+    rawp.wNA[idx.na] = NA
+    rawp.wNA[-idx.na] = rawp
+  }else{
+    rawp.wNA = rawp
+  }
   rslt = list(alpha10 = alpha10, alpha01 = alpha01, alpha00 = alpha00, alpha1 = alpha1, alpha2 = alpha2, rawp = rawp.wNA)
   return(rslt)
 }
