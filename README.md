@@ -2,7 +2,7 @@
 
 [miMediation](https://github.com/KiRinHong/miMediation) is a R package for performing phylogeny-based mediation test [(PhyloMed)](https://github.com/KiRinHong/PhyloMed) for microbiome data.
 
-See the following for detailted and up-to-date documentation:
+See the following for comprehensive and up-to-date documentation:
 
 - The [miMediation R package manual](https://github.com/KiRinHong/miMediation/blob/main/miMediation_0.1.pdf).
 - The [tutorial walkthough of the proposed PhyloMed](https://github.com/KiRinHong/miMediation/blob/main/miMediation_vignette.pdf).
