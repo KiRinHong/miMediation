@@ -38,8 +38,8 @@ knitr::include_graphics("exampleFig.png")
 ```
 
 As depicted in the figure above, we propose to construct a local mediation model for the subcomposition at each internal node of the phylogenetic tree. The subcomposition on a given internal node consists of the relative abundance aggregated at its two child nodes. We apply the following linear and generalized linear regression models to represent the causal path diagram of the local mediation model at the $j$th internal node
-$$E\left( \log \left( \frac{M_{ij1}}{M_{ij2}}\right) \right)\ = \alpha^{\rm T}_{jX} {\bf X}_i + \alpha_j T_i$$
-$$g(E(Y_i)) = \beta^{\rm T}_{jX} {\bf X}_i + \beta_{jT} T_i  + \beta_{j} \log\left(\frac{M_{ij1}}{M_{ij2}}\right)$$
+$$E\left\{ \log \left( \frac{M_{ij1}}{M_{ij2}}\right) \right\} = \alpha^{\rm T}_{jX} {\bf X}_i + \alpha_j T_i$$
+$$g\{E(Y_i)\} = \beta^{\rm T}_{jX} {\bf X}_i + \beta_{jT} T_i  + \beta_{j} \log\left(\frac{M_{ij1}}{M_{ij2}}\right)$$
 where $g(\cdot)$ is the link function depending on the type of the outcome and we omit the intercept term in both models as it can be absorbed into ${\bf X}_i$.
 
 Under potential outcome framework (@vanderweele2015explanation) and assumptions of no unmeasured confounding variables, it leads to the null hypothesis $$H_0^j=\alpha_j\beta_j=0$$, which is equivalent to the union of three disjoint component null hypotheses

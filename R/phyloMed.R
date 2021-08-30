@@ -136,18 +136,27 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
   }
   
   method = match.arg(tolower(method), choices = c("jc", "storey"))
+  if(verbose) cat(sprintf("Use %g's method to obtain probability of null hypotheses estimates\n", toupper(method)))
+  if(method == "storey"){
+    if(!is.numeric(lambda)) stop("Lambda is not a numeric value!")
+    if(lambda >= 1) stop("Lambda should between 0 and 1 (0 < lambda < 1)!")
+    if(lambda <= 0) stop("Lambda should between 0 and 1 (0 < lambda < 1)!")
+    if(verbose) cat(sprintf("Set lambda to %g\n", lambda))
+  }
   
   treestructure = .phylostructure(tree)
   
   if(is.null(confounders)){ 
     conf = matrix(1, nrow = n.sample, ncol = 1)
+  }else if(is.vector(confounders) && unique(confounders) == 1){
+    conf = matrix(confounders, nrow = n.sample, ncol = 1) # handle the case if user include the intercept into covariate
   }else if(!is.vector(confounders) && unique(confounders[,1]) == 1){
     conf = confounders # handle the case if user include the intercept into covariate
   }else{
     conf = cbind(1, confounders)
   }
   
-  # compute residual forming matrix Rconf
+  # compute residual forming matrix Rconf (Smith's method)
   Rconf = diag(nrow(conf)) - conf %*% solve(t(conf) %*% conf) %*% t(conf)
   
   Trt = treatment
@@ -183,20 +192,18 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
     
     G = log(Mc2[,-2]/as.numeric(Mc2[,2]))
     if(interaction){
-      G = cbind(G, Trt*G)
+      G2 = cbind(G, Trt*G)
     }
     
     # For some internal node, one child have all obs being 0. We need to skip such internal node, and set the results to NA
     condition1 = any(colSums(Mc) == 0)
-    if(condition1){
-      warnings(sprintf("Some children have all observations being 0, skip internal node #%g", i))
-    }
+    if(condition1 && verbose) cat(sprintf("Some children have all observations being 0, skip internal node #%g", i))
     
     # rank < 3
     condition2 = FALSE
     if(interaction){
-      condition2 = (qr(cbind(Trt,G))$rank < 3)
-      if(condition2) warnings(sprintf("Matrix (T, G, Trt*G) is not full rank, skip internal node #%g", i))
+      condition2 = (qr(cbind(Trt,G2))$rank < 3)
+      if(condition2 && verbose) cat(sprintf("Matrix (T, G, Trt*G) is not full rank, skip internal node #%g", i))
     }
     
     if(any(condition1,condition2)){
@@ -228,7 +235,7 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
       # continuous traits
       if(interaction){
         obj = SKAT_Null_Model(outcome~0+conf+Trt, out_type="C")
-        TestBeta = .test_beta(outcome, G, Trt, conf, obj = obj, test.type="vc") # est[1] ~ mediator est[2] ~ exposure * mediator
+        TestBeta = .test_beta(outcome, G2, Trt, conf, obj = obj, test.type="vc") # est[1] ~ mediator est[2] ~ exposure * mediator
       }else{
         mod = summary(lm(outcome~cbind(conf[,-1], Trt)))
         mod.s2 = mod$sigma^2
@@ -239,7 +246,7 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
       # binary traits
       if(interaction){
         obj = SKAT_Null_Model(outcome~0+conf+Trt, out_type="D")
-        TestBeta = .test_beta(outcome, G, Trt, conf, obj = obj, test.type="vc") # est[1] ~ mediator est[2] ~ exposure * mediator
+        TestBeta = .test_beta(outcome, G2, Trt, conf, obj = obj, test.type="vc") # est[1] ~ mediator est[2] ~ exposure * mediator
       }else{
         mod = glm(outcome~cbind(conf[,-1], Trt), family = "binomial")
         mod.est = mod$coefficients
@@ -248,7 +255,7 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
     }
     
     chi.stat.beta[i-K] = TestBeta$stat
-    z.stat.beta[i-K] = sqrt(TestBeta$stat)*sign(TestBeta$est)
+    z.stat.beta[i-K] = sqrt(TestBeta$stat)*sign(sum(TestBeta$est))
     pval.beta.asym[i-K] = TestBeta$pval
     
     if(!is.null(n.perm)){
@@ -310,7 +317,8 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
         beta.stat.perm = numeric(B.max)
         while (Nexc < R.sel & m < B.max) {
           if(interaction){
-            tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, obj = obj, test.type="vc") # est[1] ~ mediator est[2] ~ exposure * mediator
+            # est[1] ~ mediator est[2] ~ exposure * mediator
+            tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G2, Trt, conf, obj = obj, test.type="vc") 
           }else{
             if(length(unique(outcome)) > 2){
               tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, resid.obs = mod.resid, s2.obs = mod.s2, test.type="mv")
