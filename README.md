@@ -5,7 +5,7 @@
 See the following for comprehensive and up-to-date documentation:
 
 - The [miMediation R package manual](https://github.com/KiRinHong/miMediation/blob/main/miMediation_0.1.pdf).
-- The [tutorial walkthough of the proposed PhyloMed](https://github.com/KiRinHong/miMediation/blob/main/miMediation_vignette.pdf).
+- The [tutorial walkthrough of the proposed PhyloMed](https://github.com/KiRinHong/miMediation/blob/main/miMediation_vignette.pdf).
 - The article: Hong, Q., Chen G., and Tang Z-Z.. (2021) A phylogeny-based test of mediation effect in microbiome. Manuscript.
 
 ## Author
