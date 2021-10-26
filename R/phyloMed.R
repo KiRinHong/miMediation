@@ -93,6 +93,9 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
                      n.perm = NULL, verbose = FALSE, graph = FALSE){
   
   if(sum(is.na(cbind(treatment, mediators, outcome, confounders)))>0) stop("Input data contain NAs!")
+  if(is.data.frame(treatment)) treatment = unlist(treatment)
+  if(is.data.frame(mediators)) mediators = as.matrix(mediators)
+  if(is.data.frame(outcome)) outcome = unlist(outcome)
   
   n.sample = length(treatment)
   if(any(nrow(mediators)!=n.sample, length(outcome)!=n.sample)) stop("Input data must be of same length!")
@@ -136,7 +139,7 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
   }
   
   method = match.arg(tolower(method), choices = c("jc", "storey"))
-  if(verbose) cat(sprintf("Use %g's method to obtain probability of null hypotheses estimates\n", toupper(method)))
+  if(verbose) cat(sprintf("Use %s's method to obtain probability of null hypotheses estimates\n", toupper(method)))
   if(method == "storey"){
     if(!is.numeric(lambda)) stop("Lambda is not a numeric value!")
     if(lambda >= 1) stop("Lambda should between 0 and 1 (0 < lambda < 1)!")
