@@ -25,7 +25,7 @@ phyloMed(
 \item{mediators}{A named numeric matrix containing microbiome abundance. Each row is a subject and each column is a taxon. 
 Row name contains the subject ID and column name contains the taxon name.}
 
-\item{outcome}{A numeric vector of continuous or binary outcomes.}
+\item{outcome}{A numeric vector of continuous or binary outcome.}
 
 \item{tree}{A \code{phylo-class} object. 
 The tip labels in the \code{tree} should overlap with the column names in the \code{mediators} matrix.}
@@ -74,7 +74,7 @@ Each list contains the following components:
 \item{\code{sig.clade}}{A list of significant nodes with their descendants.}
 \item{\code{null.prop}}{A vector of the estimated proportion of different types of null hypotheses 
 across all local mediation tests.}
-\item{\code{global.pval}}{A global test p-value using Simes' method (Simes, 1986).}
+\item{\code{global.pval}}{A global test p-value using harmonic mean (Wilson, 2019).}
 
 If \code{graph} is \code{TRUE}, the phylogenetic tree will be plot. The size of the circle at each internal node is proportional to 
 \eqn{-\log_{10}}(subcomposition p-value), the larger circle indicates a smaller p-value. The significant nodes are highlighted by blue rectangle.
@@ -107,10 +107,10 @@ rslt.phylomed = phyloMed(Trt, M, Y, tree, graph = TRUE)
 
 }
 \references{
-Hong, Q., Chen G., and Tang Z-Z.. A phylogeny-based test of mediation effect in microbiome. Manuscript.
+Hong, Q., Chen G., and Tang Z-Z.. Testing mediation effect of microbial communities on a phylogenetic tree. Manuscript.
 
-Simes, R. J. (1986). An improved Bonferroni procedure for multiple tests of significance.
-\emph{Biometrika} 73:751-754.
+Wilson, D. J. (2019). The harmonic mean p-value for combining dependent tests. 
+\emph{Proceedings of the National Academy of Sciences} 116(4), 1195-1200.
 }
 \seealso{
 \code{\link{prepareTree}}
