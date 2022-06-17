@@ -17,7 +17,7 @@
 #' @param treatment A numeric vector of the treatment. 
 #' @param mediators A named numeric matrix containing microbiome abundance. Each row is a subject and each column is a taxon. 
 #' Row name contains the subject ID and column name contains the taxon name.
-#' @param outcome A numeric vector of continuous or binary outcomes.
+#' @param outcome A numeric vector of continuous or binary outcome.
 #' @param tree A \code{phylo-class} object. 
 #' The tip labels in the \code{tree} should overlap with the column names in the \code{mediators} matrix. 
 #' @seealso \code{\link{prepareTree}}
@@ -58,18 +58,17 @@
 #' \item{\code{sig.clade}}{A list of significant nodes with their descendants.}
 #' \item{\code{null.prop}}{A vector of the estimated proportion of different types of null hypotheses 
 #' across all local mediation tests.}
-#' \item{\code{global.pval}}{A global test p-value using Simes' method (Simes, 1986).}
+#' \item{\code{global.pval}}{A global test p-value using harmonic mean (Wilson, 2019).}
 #' 
 #' If \code{graph} is \code{TRUE}, the phylogenetic tree will be plot. The size of the circle at each internal node is proportional to 
 #' \eqn{-\log_{10}}(subcomposition p-value), the larger circle indicates a smaller p-value. The significant nodes are highlighted by blue rectangle.
 #' 
 #' @author Qilin Hong \email{qhong8@@wisc.edu}
 #' @references 
-#' Hong, Q., Chen G., and Tang Z-Z.. A phylogeny-based test of mediation effect in microbiome. Manuscript.
+#' Hong, Q., Chen G., and Tang Z-Z.. Testing mediation effect of microbial communities on a phylogenetic tree. Manuscript.
 #' 
-#' Simes, R. J. (1986). An improved Bonferroni procedure for multiple tests of significance.
-#' \emph{Biometrika} 73:751-754.
-#' 
+#' Wilson, D. J. (2019). The harmonic mean p-value for combining dependent tests. 
+#' \emph{Proceedings of the National Academy of Sciences} 116(4), 1195-1200.
 #' @keywords PhyloMed
 #' @examples
 #' # Load real data
@@ -81,11 +80,12 @@
 #' tree = data.cecal$tree
 #' rslt.phylomed = phyloMed(Trt, M, Y, tree, graph = TRUE)
 #' 
-#' @importFrom fdrtool gcmlcm 
+#' @importFrom fdrtool gcmlcm
 #' @importFrom SKAT SKAT_Null_Model SKAT
 #' @importFrom phyloseq otu_table sample_data sample_names phyloseq
 #' @importFrom ape keep.tip
-#' @import ggplot2 ggtree
+#' @importFrom MASS ginv
+#' @import ggplot2 ggtree harmonicmeanp
 #' @export
 
 phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda = 0.5,
@@ -104,9 +104,8 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
   if(!is.numeric(outcome)) stop("Outcome is not a numeric vector!")
   
   tree = prepareTree(tree, verbose = verbose)
-  K = .ntaxa(tree)
   if(all(colnames(mediators) %in% tree$tip.label)){
-    if(ncol(mediators) == K){
+    if(ncol(mediators) == .ntaxa(tree)){
       mediators = mediators[,tree$tip.label]
     }else{
       warning("Prune the phylogenetic tree based on the column names of mediators!")
@@ -128,16 +127,6 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
     stop("The column names of mediators do not match the tip labels!")
   }
   
-  if(all(mediators!=0)){
-    if(verbose) cat("The mediators do not contain 0, won't impute zero\n!")
-    M = mediators
-    M2 = M
-  }else{
-    if(verbose) cat("The mediators contain 0, add maximum rounding error 0.5 to all counts!\n")
-    M = mediators
-    M2 = M + 0.5
-  }
-  
   method = match.arg(tolower(method), choices = c("jc", "storey"))
   if(verbose) cat(sprintf("Use %s's method to obtain probability of null hypotheses estimates\n", toupper(method)))
   if(method == "storey"){
@@ -147,22 +136,22 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
     if(verbose) cat(sprintf("Set lambda to %g\n", lambda))
   }
   
+  M = mediators
+  K = .ntaxa(tree)
   treestructure = .phylostructure(tree)
   
   if(is.null(confounders)){ 
-    conf = matrix(1, nrow = n.sample, ncol = 1)
+    conf.ori = matrix(1, nrow = n.sample, ncol = 1)
   }else if(is.vector(confounders) && unique(confounders) == 1){
-    conf = matrix(confounders, nrow = n.sample, ncol = 1) # handle the case if user include the intercept into covariate
+    conf.ori = matrix(confounders, nrow = n.sample, ncol = 1) # handle the case if user include the intercept into covariate
   }else if(!is.vector(confounders) && unique(confounders[,1]) == 1){
-    conf = confounders # handle the case if user include the intercept into covariate
+    conf.ori = confounders # handle the case if user include the intercept into covariate
   }else{
-    conf = cbind(1, confounders)
+    conf.ori = cbind(1, confounders)
   }
   
-  # compute residual forming matrix Rconf (Smith's method)
-  Rconf = diag(nrow(conf)) - conf %*% solve(t(conf) %*% conf) %*% t(conf)
-  
-  Trt = treatment
+  Trt.ori = treatment
+  outcome.ori = outcome
   ## here perform tree-based method
   chi.stat.alpha = chi.stat.beta = z.stat.alpha = z.stat.beta = pval.alpha.asym = pval.beta.asym = pval.alpha.perm = pval.beta.perm = numeric(tree$Nnode)
   
@@ -185,31 +174,44 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
     
     Mc.left = rowSums(M[,treestructure$descendant[child.left,], drop = FALSE])
     Mc.right = rowSums(M[,treestructure$descendant[child.right,], drop = FALSE])
-    Mc2.left = rowSums(M2[,treestructure$descendant[child.left,], drop = FALSE])
-    Mc2.right = rowSums(M2[,treestructure$descendant[child.right,], drop = FALSE])
+    
     if(mean(Mc.left) < mean(Mc.right)){
-      Mc = cbind(Mc.right, Mc.left); Mc2 = cbind(Mc2.right, Mc2.left);
+      Mc = cbind(Mc.right, Mc.left)
     }else{
-      Mc = cbind(Mc.left, Mc.right); Mc2 = cbind(Mc2.left, Mc2.right);
+      Mc = cbind(Mc.left, Mc.right)
     }
     
-    G = log(Mc2[,-2]/as.numeric(Mc2[,2]))
+    Mc2 = Mc + 0.5
+    idx = which(rowSums(Mc) != 0)
+    if(length(idx) != 0){
+      Trt = Trt.ori[idx]; conf = conf.ori[idx,,drop=FALSE]; outcome = outcome.ori[idx]
+      G = log(Mc2[idx,-2]/as.numeric(Mc2[idx,2]))
+    }else{
+      Trt = Trt.ori; conf = conf.ori; outcome = outcome.ori
+      G = log(Mc2[,-2]/as.numeric(Mc2[,2]))
+    }
+    
     if(interaction){
       G2 = cbind(G, Trt*G)
     }
     
     # For some internal node, one child have all obs being 0. We need to skip such internal node, and set the results to NA
     condition1 = any(colSums(Mc) == 0)
-    if(condition1 && verbose) cat(sprintf("Some children have all observations being 0, skip internal node #%g", i))
+    if(condition1 && verbose) cat(sprintf("Some children have all observations being 0, skip internal node #%g\n", i))
     
     # rank < 3
     condition2 = FALSE
     if(interaction){
       condition2 = (qr(cbind(Trt,G2))$rank < 3)
-      if(condition2 && verbose) cat(sprintf("Matrix (T, G, Trt*G) is not full rank, skip internal node #%g", i))
+      if(condition2 && verbose) cat(sprintf("Matrix (T, G, Trt*G) is not full rank, skip internal node #%g\n", i))
     }
     
-    if(any(condition1,condition2)){
+    # remove the subjects with all subcomponents being zero may result in collinearity
+    # the outcome may be unique after removing the subjects when is binary
+    condition3 = (qr(cbind(conf,Trt))$rank < (ncol(conf)+1)) | (length(unique(outcome)) == 1)
+    if(condition3 && verbose) cat(sprintf("Matrix (Covariates, Trt) is not full rank or outcome is unique, skip internal node #%g\n", i))
+    
+    if(any(condition1,condition2,condition3)){
       chi.stat.alpha[i-K] = NA
       z.stat.alpha[i-K] = NA
       pval.alpha.asym[i-K] = NA
@@ -221,14 +223,17 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
       next
     }
     
-    fit = lm(G~0+conf)
-    r = fit$residuals
-    dispersion = sum(r^2)/fit$df.residual
-    fit.full = lm(G~0+conf+Trt)
-    est = coef(fit.full)["Trt"]
-    x2.1 = qr.resid(fit$qr, Trt)
-    stat = (sum(x2.1*r))^2/sum(x2.1*x2.1)/dispersion
-    pval = 1 - pchisq(stat, 1)
+    # compute residual forming matrix Rconf (Smith's method)
+    Rconf = diag(nrow(conf)) - conf %*% solve(t(conf) %*% conf) %*% t(conf)
+    
+    mod.full = summary(glm(G~0+conf+Trt,family = quasi()))
+    est = mod.full$coefficients["Trt","Estimate"]
+    mod.reduce = summary(glm(G~0+conf,family = quasi()))
+    mod.reduce.disp = mod.reduce$dispersion
+    mod.reduce.resid = mod.reduce$deviance.resid
+    TestAlpha = .test_alpha(G, Trt, conf, mod.reduce.resid, mod.reduce.disp)
+    stat = TestAlpha$stat
+    pval = TestAlpha$pval
     
     chi.stat.alpha[i-K] = stat
     z.stat.alpha[i-K] = sqrt(stat)*sign(est)
@@ -237,23 +242,23 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
     if(length(unique(outcome)) > 2) {
       # continuous traits
       if(interaction){
-        obj = SKAT_Null_Model(outcome~0+conf+Trt, out_type="C")
-        TestBeta = .test_beta(outcome, G2, Trt, conf, obj = obj, test.type="vc") # est[1] ~ mediator est[2] ~ exposure * mediator
+        obj = SKAT_Null_Model(outcome~0+conf+Trt, out_type = "C")
+        TestBeta = .test_beta(outcome, G2, Trt, conf, obj = obj, test.type = "vc") # est[1] ~ mediator est[2] ~ exposure * mediator
       }else{
         mod = summary(lm(outcome~cbind(conf[,-1], Trt)))
         mod.s2 = mod$sigma^2
         mod.resid = mod$residuals
-        TestBeta = .test_beta(outcome, G, Trt, conf, resid.obs = mod.resid, s2.obs = mod.s2, test.type="mv")
+        TestBeta = .test_beta(outcome, G, Trt, conf, resid.obs = mod.resid, s2.obs = mod.s2, test.type = "mv")
       }
     } else {
       # binary traits
       if(interaction){
-        obj = SKAT_Null_Model(outcome~0+conf+Trt, out_type="D")
-        TestBeta = .test_beta(outcome, G2, Trt, conf, obj = obj, test.type="vc") # est[1] ~ mediator est[2] ~ exposure * mediator
+        obj = SKAT_Null_Model(outcome~0+conf+Trt, out_type = "D")
+        TestBeta = .test_beta(outcome, G2, Trt, conf, obj = obj, test.type = "vc") # est[1] ~ mediator est[2] ~ exposure * mediator
       }else{
         mod = glm(outcome~cbind(conf[,-1], Trt), family = "binomial")
         mod.est = mod$coefficients
-        TestBeta = .test_beta(outcome, G, Trt, conf, est.obs = mod.est, test.type="mv")
+        TestBeta = .test_beta(outcome, G, Trt, conf, est.obs = mod.est, test.type = "mv")
       }
     }
     
@@ -270,25 +275,25 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
           cat("Use Pseudo-ECDF approximation p-value\n")
         }
       }else{
-        m = 0
+        m = 1
         Nexc = 0
         alpha.stat.perm = numeric(B.max)
         while (Nexc < R.sel & m < B.max) {
-          x2.1_perm = qr.resid(fit$qr, Rconf[sample(nrow(Rconf)),] %*% Trt)
-          stat_perm = (sum(x2.1_perm*r))^2/sum(x2.1_perm*x2.1_perm)/dispersion
+          TestAlpha_perm = .test_alpha(G, Rconf[sample(nrow(Rconf)),] %*% Trt, conf, mod.reduce.resid, mod.reduce.disp)
+          stat_perm = TestAlpha_perm$stat
           if(stat_perm >= stat) Nexc = Nexc + 1
           alpha.stat.perm[m] = stat_perm
           m = m + 1
         }
         if(m < B.max){
-          pval.alpha.perm[i-K] = Nexc/m
+          pval.alpha.perm[i-K] = Nexc/(m-1)
           if(verbose){
-            cat(sprintf("# of permutations for alpha: %g\n", m))
+            cat(sprintf("# of permutations for alpha: %g\n", m-1))
             cat("Use ECDF approximation p-value\n")
           }
         }else{
           if(Nexc <= 10){
-            pval.alpha.perm[i-K] = .gpd_approx(alpha.stat.perm, 250, stat)
+            pval.alpha.perm[i-K] = tryCatch(.gpd_approx(alpha.stat.perm, 250, stat), error=function(err) NA)
             if(verbose){
               cat(sprintf("# of permutations for alpha: %g\n", B.max))
               cat("Use GPD approximation p-value\n")
@@ -315,18 +320,18 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
           cat("Use Pseudo-ECDF approximation p-value\n")
         }
       }else{
-        m = 0
+        m = 1
         Nexc = 0
         beta.stat.perm = numeric(B.max)
         while (Nexc < R.sel & m < B.max) {
           if(interaction){
             # est[1] ~ mediator est[2] ~ exposure * mediator
-            tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G2, Trt, conf, obj = obj, test.type="vc") 
+            tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G2, Trt, conf, obj = obj, test.type = "vc") 
           }else{
             if(length(unique(outcome)) > 2){
-              tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, resid.obs = mod.resid, s2.obs = mod.s2, test.type="mv")
+              tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, resid.obs = mod.resid, s2.obs = mod.s2, test.type = "mv")
             }else{
-              tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, est.obs = mod.est, test.type="mv")
+              tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, est.obs = mod.est, test.type = "mv")
             }
           }
           if(tmp_beta$stat >= TestBeta$stat) Nexc = Nexc + 1
@@ -334,14 +339,14 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
           m = m + 1
         }
         if(m < B.max){
-          pval.beta.perm[i-K] = Nexc/m
+          pval.beta.perm[i-K] = Nexc/(m-1)
           if(verbose){
             cat(sprintf("# of permutations for beta: %g\n", m))
             cat("Use ECDF approximation p-value\n")
           }
         }else{
           if(Nexc <= 10){
-            pval.beta.perm[i-K] = .gpd_approx(beta.stat.perm, 250, TestBeta$stat)
+            pval.beta.perm[i-K] = tryCatch(.gpd_approx(beta.stat.perm, 250, TestBeta$stat), error=function(err) NA)
             if(verbose){
               cat(sprintf("# of permutations for beta: %g\n", B.max))
               cat("Use GPD approximation p-value\n")
@@ -390,20 +395,25 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
   if(graph == TRUE && is.null(n.perm)){
     tree.vis = tree
     tree.vis$node.label = rawp.asym
-    g.asym = ggtree(tree.vis, branch.length = "none") + 
+    g.asym = ggtree(tree.vis, layout = "rectangular", branch.length = "none") + 
       geom_point2(aes(subset=!isTip), shape=21, size=-log10(as.numeric(rawp.asym))*3, fill = "red") +
       geom_tiplab(size=3) + 
       theme_tree(plot.margin=margin(5,5,5,5))
-    if(length(sig.nodeID.asym) > 0) g.asym = g.asym + geom_hilight(node = sig.nodeID.asym+K, fill = "steelblue", alpha = 0.5) 
+    
+    if(length(sig.nodeID.asym) > 0) {
+      labels = rep(NA, 2*K-1); labels[sig.nodeID.asym+K] = LETTERS[1:length(sig.nodeID.asym)]
+      g.asym = g.asym + geom_text2(aes(subset=!isTip, label=labels), vjust=-.5, hjust=-.5, angle = 0, size=5)
+      for (i in 1:length(sig.nodeID.asym)) {
+        g.asym = g.asym + geom_hilight(node = sig.nodeID.asym[i]+K, fill = "steelblue", alpha = .6)
+      }
+    }
     print(g.asym)
-    # use gzoom(tree, tip.label) to exploring very large trees
-    # use scale_x_reverse() + coord_flip() to flip the tree
   }
   
   rawp.asym.rm = na.omit(rawp.asym)
   L = length(rawp.asym.rm)
-  globalp.asym = min(L * rawp.asym.rm/rank(rawp.asym.rm))
-  names(globalp.asym) = "Simes"
+  globalp.asym = p.hmp(rawp.asym.rm, w = rep(1/L, L), L = L)
+  names(globalp.asym) = "HMP"
   rslt = list(PhyloMed.A = list(node.pval = rawp.asym, sig.clade = sig.clade.asym, 
                                 null.prop = null.prop.est.asym, global.pval = globalp.asym))
   
@@ -434,17 +444,23 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
     if(graph){
       tree.vis = tree
       tree.vis$node.label = rawp.perm
-      g.perm = ggtree(tree.vis, branch.length = "none") + 
-        geom_point2(aes(subset=!isTip), shape=21, size=-log10(as.numeric(rawp.perm))*3, fill = "red") +
+      g.perm = ggtree(tree.vis, layout = "rectangular", branch.length = "none") + 
+        geom_point2(aes(subset=!isTip), shape=21, size=-log10(as.numeric(rawp.asym))*3, fill = "red") +
         geom_tiplab(size=3) + 
         theme_tree(plot.margin=margin(5,5,5,5))
-      if(length(sig.nodeID.perm) > 0) g.perm = g.perm + geom_hilight(node = sig.nodeID.perm+K, fill = "steelblue", alpha = 0.5) 
+      if(length(sig.nodeID.perm) > 0) {
+        labels = rep(NA, 2*K-1); labels[sig.nodeID.perm+K] = LETTERS[1:length(sig.nodeID.perm)]
+        g.perm = g.perm + geom_text2(aes(subset=!isTip, label=labels), vjust=-.5, hjust=-.5, angle = 0, size=5)
+        for (i in 1:length(sig.nodeID.perm)) {
+          g.perm = g.perm + geom_hilight(node = sig.nodeID.perm[i]+K, fill = "steelblue", alpha = .6)
+        }
+      }
       print(g.perm)
     }
     
     rawp.perm.rm = na.omit(rawp.perm)
-    globalp.perm = min(L * rawp.perm.rm/rank(rawp.perm.rm))
-    names(globalp.perm) = "Simes"
+    globalp.perm = p.hmp(rawp.perm.rm, w = rep(1/L, L), L = L)
+    names(globalp.perm) = "HMP"
     rslt = list(PhyloMed.A = list(node.pval = rawp.asym, sig.clade = sig.clade.asym, 
                                   null.prop = null.prop.est.asym, global.pval = globalp.asym),
                 PhyloMed.P = list(node.pval = rawp.perm, sig.clade = sig.clade.perm, 
@@ -645,7 +661,26 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
     return((1 / shape) * (runif(n)^(-shape) - 1))
   else return(rexp(n, 1))
 }
-
+# Test alpha in mediator model
+.test_alpha <- function(G, Trt, covariates, resid, disp){
+  # Trt = tmp; covariates = conf; resid = mod.reduce.resid; disp = mod.reduce.disp
+  Trt = matrix(Trt, nrow = length(Trt), ncol = 1)
+  X1 = model.matrix(G~0+covariates)
+  D.resid2 = diag(resid^2)/disp
+  A11 = t(X1) %*% X1; B11 = t(X1) %*% D.resid2 %*% X1
+  A12 = t(X1) %*% Trt; B12 = t(X1) %*% D.resid2 %*% Trt
+  A21 = t(Trt) %*% X1; B21 = t(Trt) %*% D.resid2 %*% X1
+  A22 = t(Trt) %*% Trt; B22 = t(Trt) %*% D.resid2 %*% Trt
+  # continuous traits
+  W = B22 - A21 %*% ginv(A11) %*% B12 - B21 %*% ginv(A11) %*% A12 + 
+    A21 %*% ginv(A11) %*% B11 %*% ginv(A11) %*% A12
+  U = as.vector(t(Trt) %*% resid)/disp
+  V = W/disp
+  stat = as.numeric(U %*% ginv(V) %*% U)
+  pval = 1 - pchisq(stat, 1) 
+  return(list(stat=stat, pval=pval))
+}
+# Test beta in outcome model
 .test_beta <- function(outcome, G, Trt, conf, resid.obs=NULL, s2.obs=NULL, est.obs=NULL, obj=NULL, test.type="mv"){
   m = ncol(G)
   n = nrow(G)
