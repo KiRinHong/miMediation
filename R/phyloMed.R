@@ -469,7 +469,7 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
   
   OTU = otu_table(M, taxa_are_rows = FALSE)
   TAX = NULL
-  meta.df = as.data.frame(cbind(Trt, outcome, conf[,-1]))
+  meta.df = as.data.frame(cbind(Trt.ori, outcome.ori, conf.ori[,-1]))
   names(meta.df)[1:2] = c("treatment", "outcome")
   rownames(meta.df) = rownames(OTU)
   meta.data = sample_data(meta.df)
