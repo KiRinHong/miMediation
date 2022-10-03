@@ -142,9 +142,9 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
   
   if(is.null(confounders)){ 
     conf.ori = matrix(1, nrow = n.sample, ncol = 1)
-  }else if(is.vector(confounders) && unique(confounders) == 1){
+  }else if(all(is.vector(confounders), unique(confounders) == 1)){
     conf.ori = matrix(confounders, nrow = n.sample, ncol = 1) # handle the case if user include the intercept into covariate
-  }else if(!is.vector(confounders) && unique(confounders[,1]) == 1){
+  }else if(all(!is.vector(confounders), unique(confounders[,1]) == 1)){
     conf.ori = confounders # handle the case if user include the intercept into covariate
   }else{
     conf.ori = cbind(1, confounders)
@@ -197,19 +197,19 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
     
     # For some internal node, one child have all obs being 0. We need to skip such internal node, and set the results to NA
     condition1 = any(colSums(Mc) == 0)
-    if(condition1 && verbose) cat(sprintf("Some children have all observations being 0, skip internal node #%g\n", i))
+    if(all(condition1,verbose)) cat(sprintf("Some children have all observations being 0, skip internal node #%g\n", i))
     
     # rank < 3
     condition2 = FALSE
     if(interaction){
       condition2 = (qr(cbind(Trt,G2))$rank < 3)
-      if(condition2 && verbose) cat(sprintf("Matrix (T, G, Trt*G) is not full rank, skip internal node #%g\n", i))
+      if(all(condition2, verbose)) cat(sprintf("Matrix (T, G, Trt*G) is not full rank, skip internal node #%g\n", i))
     }
     
     # remove the subjects with all subcomponents being zero may result in collinearity
     # the outcome may be unique after removing the subjects when is binary
-    condition3 = (qr(cbind(conf,Trt))$rank < (ncol(conf)+1)) | (length(unique(outcome)) == 1)
-    if(condition3 && verbose) cat(sprintf("Matrix (Covariates, Trt) is not full rank or outcome is unique, skip internal node #%g\n", i))
+    condition3 = (qr(cbind(conf,Trt))$rank < (ncol(conf)+1)) || (length(unique(outcome)) == 1)
+    if(all(condition3, verbose)) cat(sprintf("Matrix (Covariates, Trt) is not full rank or outcome is unique, skip internal node #%g\n", i))
     
     if(any(condition1,condition2,condition3)){
       chi.stat.alpha[i-K] = NA
@@ -392,7 +392,7 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
     sig.clade.asym = NULL
   }
   
-  if(graph == TRUE && is.null(n.perm)){
+  if(all(graph, is.null(n.perm))){
     tree.vis = tree
     tree.vis$node.label = rawp.asym
     g.asym = ggtree(tree.vis, layout = "rectangular", branch.length = "none") + 
