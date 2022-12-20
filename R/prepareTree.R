@@ -25,7 +25,7 @@
 #' @export
 
 prepareTree <- function(tree, verbose = FALSE){
-  if(class(tree) != "phylo") stop("Input tree is not a phylo class!")
+  if(!any(class(tree) %in% "phylo")) stop("Input tree is not a phylo class!")
   tree$edge = tree$edge[order(tree$edge[,2]),] # order the tips
   if(.is_binary(tree)){
     if(verbose) cat("The phylogeny tree is already binary!\n")
