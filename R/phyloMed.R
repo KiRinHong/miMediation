@@ -4,27 +4,26 @@
 #' The method leverages the hierarchical phylogeny relationship among different microbial taxa to decompose the
 #' complex mediation model on the full microbial composition into multiple simple independent local mediation models
 #' on subcompositions. The \code{phyloMed} function (a) performs the mediation test for the subcomposition at each internal node
-#' of the phylogenetic tree and pinpoint the mediating nodes with significant test p-values; and (b) combine all subcomposition 
-#' p-values to  assess the overall mediation effect of the entire microbial community.
+#' of the phylogenetic tree or taxonomic tree and pinpoint the mediating nodes with significant test p-values; and (b) combine all subcomposition 
+#' p-values to assess the overall mediation effect of the entire microbial community.
 #' 
 #' @details PhyloMed uses the treatment-mediator association test p-value and mediation-outcome association test p-value
 #' to construct the subcomposition mediation test statistic at each local model (Hong et al., Manuscript). The two p-values can come from
 #' either the asymptotic test or the permutation test. Asymptotic test is faster but less accurate when the study sample size is small.
 #' By default (\code{n.perm=NULL}), only asymptotic test will be performed. Otherwise, if \code{n.perm} is set to a positive number,
 #' results from two versions of PhyloMed will be output, one based on the asymptotic p-value and the other based on the permutation 
-#' p-value. Graph only highlights the mediating nodes identified from permutation version when both versions are performed.
+#' p-value. Graph only highlights the mediating nodes identified from permutation version when both versions are performed. 
 #' 
 #' @param treatment A numeric vector of the treatment. 
-#' @param mediators A named numeric matrix containing microbiome abundance. Each row is a subject and each column is a taxon. 
-#' Row name contains the subject ID and column name contains the taxon name.
+#' @param mediators A named numeric matrix containing microbiome abundance. Each row is a subject and each column is an OTU or a taxon. 
+#' Row name contains the subject ID and column name contains the taxon name. 
 #' @param outcome A numeric vector of continuous or binary outcome.
-#' @param tree A \code{phylo-class} object. 
-#' The tip labels in the \code{tree} should overlap with the column names in the \code{mediators} matrix. 
+#' @param tree A phylogenetic tree (\code{phylo-class} object) or a taxonomy table (\code{matrix-class} object). 
+#' The tip labels in the phylogenetic tree or the row names in the taxonomy table should overlap with the column names in the \code{mediators} matrix. 
+#' The column names in the taxonomy table should start from the higher level to lower level, e.g., from kingdom to genus.
 #' @seealso \code{\link{prepareTree}}
-#' @param method An optional character string denotes the method to used in estimate proportion of null. Can be abbreviated.
-#' Default method is \code{"JC"}, an alternative method is \code{"Storey"}.
-#' @param lambda An optional numeric tuning parameter between 0 and 1, need to be specified when the method is \code{"Storey"}.
-#' Default is \code{0.5}.
+#' @param pi.method An optional character string denotes the method to used in estimate proportion of null. 
+#' Default method is \code{"product"}, an alternative method is \code{"maxp"}.
 #' @param confounders An optional numeric vector or matrix containing confounders that may affect the 
 #' treatment, mediators and outcome. 
 #' Each row is a subject and each column is a specific confounder, e.g., age or sex. 
@@ -38,7 +37,7 @@
 #' Default is \code{NULL}. See Details.
 #' @param verbose An optional logical value. If \code{TRUE}, information of the test on each node will be printed.
 #' Default is \code{FALSE}.
-#' @param graph An optional logical value. If \code{TRUE}, generate a graph that contains a phylogenetic tree with
+#' @param graph An optional logical value. If \code{TRUE}, generate a graph that contains a phylogenetic tree or taxonomic tree with
 #' identified mediating nodes highlighted. 
 #' Default is \code{FALSE}. See Details.
 #' 
@@ -48,6 +47,7 @@
 #' \code{clean.data} contains the following components:
 #' \item{\code{sample_data}}{Input treatment, outcome and confounders.}
 #' \item{\code{otu_table}}{The abundance data for the taxa that are present on the tips of the \code{phy_tree}.}
+#' \item{\code{tax_table}}{The taxonomy table with rows exactly match the taxa in the \code{otu_table}.}
 #' \item{\code{phy_tree}}{The binary and rooted phylogenetic tree with tips exactly match the taxa in the \code{otu_table}.}
 #' 
 #' If \code{n.perm} is not \code{NULL}, the function will return two lists in \code{rslt} named \code{PhyloMed.A} and \code{PhyloMed.P}, respectively.
@@ -58,87 +58,143 @@
 #' \item{\code{sig.clade}}{A list of significant nodes with their descendants.}
 #' \item{\code{null.prop}}{A vector of the estimated proportion of different types of null hypotheses 
 #' across all local mediation tests.}
-#' \item{\code{global.pval}}{A global test p-value using harmonic mean (Wilson, 2019).}
+#' \item{\code{global.pval}}{A global test p-value using harmonic mean.}
 #' 
-#' If \code{graph} is \code{TRUE}, the phylogenetic tree will be plot. The size of the circle at each internal node is proportional to 
+#' If \code{graph} is \code{TRUE}, the phylogenetic or taxonomic tree will be plot. The size of the circle at each internal node is proportional to 
 #' \eqn{-\log_{10}}(subcomposition p-value), the larger circle indicates a smaller p-value. The significant nodes are highlighted by blue rectangle.
 #' 
 #' @author Qilin Hong \email{qhong8@@wisc.edu}
 #' @references 
-#' Hong, Q., Chen G., and Tang Z-Z.. Testing mediation effect of microbial communities on a phylogenetic tree. Manuscript.
+#' Hong, Q., Chen G., and Tang Z-Z.. PhyloMed: a phylogeny-based test of mediation effect in microbiome. Manuscript.
 #' 
-#' Wilson, D. J. (2019). The harmonic mean p-value for combining dependent tests. 
-#' \emph{Proceedings of the National Academy of Sciences} 116(4), 1195-1200.
 #' @keywords PhyloMed
 #' @examples
 #' # Load real data
 #' data(data.cecal)
-#' # Run test
+#' # Run test with phylogeny tree
 #' Trt = data.cecal$treatment
 #' M = data.cecal$mediators
 #' Y = data.cecal$outcome
 #' tree = data.cecal$tree
 #' rslt.phylomed = phyloMed(Trt, M, Y, tree, graph = TRUE)
+#' # Run test with taxonomy table
+#' Trt = data.zeeviD$treatment
+#' M = data.zeeviD$mediators
+#' Y = data.zeeviD$outcome
+#' tree = data.zeeviD$tree
+#' rslt.phylomed = phyloMed(Trt, M, Y, tree, graph = TRUE)
 #' 
 #' @importFrom fdrtool gcmlcm
 #' @importFrom SKAT SKAT_Null_Model SKAT
-#' @importFrom phyloseq otu_table sample_data sample_names phyloseq
+#' @importFrom phyloseq otu_table tax_table sample_data sample_names phyloseq
 #' @importFrom ape keep.tip
 #' @importFrom MASS ginv
-#' @import ggplot2 ggtree harmonicmeanp
+#' @import ggplot2 ggtree harmonicmeanp data.table data.tree
 #' @export
 
-phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda = 0.5,
+phyloMed <- function(treatment, mediators, outcome, tree, pi.method = "product", 
                      confounders = NULL, interaction = FALSE, fdr.alpha = 0.05, 
                      n.perm = NULL, verbose = FALSE, graph = FALSE){
-  
+  #treatment=Trt; mediators=M; outcome=Y; pi.method = "product"; confounders = NULL;interaction = FALSE; fdr.alpha = 0.7; graph = TRUE;verbose=TRUE
   if(sum(is.na(cbind(treatment, mediators, outcome, confounders)))>0) stop("Input data contain NAs!")
   if(is.data.frame(treatment)) treatment = unlist(treatment)
   if(is.data.frame(mediators)) mediators = as.matrix(mediators)
   if(is.data.frame(outcome)) outcome = unlist(outcome)
+  if(any(round(mediators) != mediators))
+    stop("Mediators contain relative abundance (proportion), please use the abundance (count) table!")
   
   n.sample = length(treatment)
   if(any(nrow(mediators)!=n.sample, length(outcome)!=n.sample)) stop("Input data must be of same length!")
   
   if(!is.numeric(treatment)) stop("Treatment is not a numeric vector!")
   if(!is.numeric(outcome)) stop("Outcome is not a numeric vector!")
-  
-  tree = prepareTree(tree, verbose = verbose)
-  if(all(colnames(mediators) %in% tree$tip.label)){
-    if(ncol(mediators) == .ntaxa(tree)){
+  if(class(tree) != "phylo"){
+    if(any(is.matrix(tree), is.data.frame(tree))){
+      if(is.data.frame(tree)) tax.tab = as.matrix(tree)
+      if(is.matrix(tree)) tax.tab = tree
+      warning("No phylogenetic tree available, construct taxonomic tree!")
+      if(dim(tax.tab)[1] < dim(tax.tab)[2]){
+        tax.tab = t(tax.tab)
+        warning("Reorgnize the taxonomy table with taxonomic ranks as columns!")
+      }
+      if(any(is.na(tax.tab))) stop("Taxonomy table contains NAs!")
+      empty.sum = apply(tax.tab, 1, function(x) sum(grepl("^\\s*$", x)))
+      if(any(empty.sum > 0)) stop("Taxonomy table contains empty strings!")
+      if(length(unique(tax.tab[,1])) != 1) stop("The first column of taxonomy table is not unique! Please specify unique Kingdom!")
+      tax.tab.unique = unique(tax.tab)
+      unique.len = apply(tax.tab.unique, 2, function(x) length(unique(x)))
+      if(any(unique.len != sort(unique.len))) stop("Please reorganize taxonomy table from highest rank to lowest rank!")
+      for (i in ncol(tax.tab.unique):2) {
+        tmp.id = which(table(tax.tab.unique[,i]) > 1)
+        if(length(tmp.id) == 0){
+          next
+        }else{
+          tmp.tab = tax.tab.unique[tax.tab.unique[,i] %in% names(table(tax.tab.unique[,i]))[tmp.id],]
+          if(nrow(unique(tmp.tab[,1:i])) == length(tmp.id)){
+            next
+          }else{
+            print(unique(tmp.tab[,1:i]))
+            stop(sprintf("Taxonomic rank %s contains conflicts, i.e., the higher rank classification is different for the same lower rank classification! Please rename the conflict ones!", 
+                         colnames(tax.tab.unique)[i])) 
+          }
+        }
+      }
+      input.type = "table"
+      tab = tax.tab
+      ori.tab.colnames = colnames(tab)
+      colnames(tab) = paste0("Rank", 1:ncol(tab))
+      if(all(colnames(mediators) %in% rownames(tab))){
+        if(ncol(mediators) == nrow(tab)){
+          mediators = mediators[,rownames(tab)]
+        }else{
+          warning("Prune the taxonomic table based on the column names of mediators!")
+          tab = tab[colnames(mediators),]
+          mediators = mediators[,rownames(tab)]
+        }
+      }else if(all(rownames(tab) %in% colnames(mediators))){
+        warning("Subset the mediators based on the taxonomy table!")
+        mediators = mediators[,rownames(tab)]
+      }else if(length(intersect(rownames(tab), colnames(mediators))) > 0){
+        taxa.cross = intersect(rownames(tab), colnames(mediators))
+        warning(sprintf("Prune the taxonomy table based on %g overlapped taxa!", length(taxa.cross)))
+        tab = tab[taxa.cross,]
+        warning(sprintf("Subset the mediators based on %g overlapped taxa!", length(taxa.cross)))
+        mediators = mediators[,rownames(tab)]
+      }else{
+        stop("The column names of mediators do not match the row names of taxonomic table!")
+      }
+    }else{
+      stop("Input data should be either a phylogeny tree or taxonomy table!")
+    }
+  }else{
+    input.type = "tree"
+    tree = prepareTree(tree, verbose = verbose)
+    if(all(colnames(mediators) %in% tree$tip.label)){
+      if(ncol(mediators) == .ntaxa(tree)){
+        mediators = mediators[,tree$tip.label]
+      }else{
+        warning("Prune the phylogenetic tree based on the column names of mediators!")
+        tree.trim = keep.tip(tree, colnames(mediators))
+        tree = prepareTree(tree.trim, verbose = verbose)
+        mediators = mediators[,tree$tip.label]
+      }
+    }else if(all(tree$tip.label %in% colnames(mediators))){
+      warning("Subset the mediators based on the tip labels on the tree!")
+      mediators = mediators[,tree$tip.label]
+    }else if(length(intersect(tree$tip.label, colnames(mediators))) > 0){
+      taxa.cross = intersect(tree$tip.label, colnames(mediators))
+      warning(sprintf("Prune the phylogenetic tree based on %g overlapped taxa!", length(taxa.cross)))
+      tree.trim = keep.tip(tree, taxa.cross)
+      tree = prepareTree(tree.trim, verbose = verbose)
+      warning(sprintf("Subset the mediators based on %g overlapped taxa!", length(taxa.cross)))
       mediators = mediators[,tree$tip.label]
     }else{
-      warning("Prune the phylogenetic tree based on the column names of mediators!")
-      tree.trim = keep.tip(tree, colnames(mediators))
-      tree = prepareTree(tree.trim, verbose = verbose)
-      mediators = mediators[,tree$tip.label]
+      stop("The column names of mediators do not match the tip labels!")
     }
-  }else if(all(tree$tip.label %in% colnames(mediators))){
-    warning("Subset the mediators based on the tip labels on the tree!")
-    mediators = mediators[,tree$tip.label]
-  }else if(length(intersect(tree$tip.label, colnames(mediators))) > 0){
-    taxa.cross = intersect(tree$tip.label, colnames(mediators))
-    warning(sprintf("Prune the phylogenetic tree based on %g overlapped taxa!", length(taxa.cross)))
-    tree.trim = keep.tip(tree, taxa.cross)
-    tree = prepareTree(tree.trim, verbose = verbose)
-    warning(sprintf("Subset the mediators based on %g overlapped taxa!", length(taxa.cross)))
-    mediators = mediators[,tree$tip.label]
-  }else{
-    stop("The column names of mediators do not match the tip labels!")
   }
   
-  method = match.arg(tolower(method), choices = c("jc", "storey"))
+  method = match.arg(tolower(pi.method), choices = c("product", "maxp"))
   if(verbose) cat(sprintf("Use %s's method to obtain probability of null hypotheses estimates\n", toupper(method)))
-  if(method == "storey"){
-    if(!is.numeric(lambda)) stop("Lambda is not a numeric value!")
-    if(lambda >= 1) stop("Lambda should between 0 and 1 (0 < lambda < 1)!")
-    if(lambda <= 0) stop("Lambda should between 0 and 1 (0 < lambda < 1)!")
-    if(verbose) cat(sprintf("Set lambda to %g\n", lambda))
-  }
-  
-  M = mediators
-  K = .ntaxa(tree)
-  treestructure = .phylostructure(tree)
   
   if(is.null(confounders)){ 
     conf.ori = matrix(1, nrow = n.sample, ncol = 1)
@@ -152,228 +208,516 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
   
   Trt.ori = treatment
   outcome.ori = outcome
-  ## here perform tree-based method
-  chi.stat.alpha = chi.stat.beta = z.stat.alpha = z.stat.beta = pval.alpha.asym = pval.beta.asym = pval.alpha.perm = pval.beta.perm = numeric(tree$Nnode)
-  
-  #### here, visit every internal node of the tree and generate p-values for testing alpha and beta respectively
-  B.max = n.perm
-  if(!is.null(n.perm)){
-    R.sel = .choose_r(fdr.alpha/K, 0.05)
-    if(R.sel > B.max) warning(sprintf("The maximal permutation times (%g) is smaller than the chosen maximal number of successes (%g). 
-    The permutation p-value may not be precise enough. Please increase the maxmimal permutation times!", B.max, R.sel))
-    if(verbose){
-      cat(sprintf("Adapative permutation procedure perfroms %g times at most\n", B.max))
-      cat(sprintf("Adapative permutation procedure requires %g exceeds\n", R.sel))
+  M = mediators
+  if(input.type == "table"){
+    K = 0
+    n.rank = ncol(tab)
+    n.level = n.rank - 1
+    for(k in 1:n.level){
+      K = K + sum(table(tab[,n.rank-k]) > 1)
     }
-  }
-
-  for (i in (K + 1):(K + tree$Nnode)) {
-    if(verbose) cat(sprintf("=====Processing internal node #%g=====\n", i))
-    child.left = treestructure$phylochildren[i,1]
-    child.right = treestructure$phylochildren[i,2]
-    
-    Mc.left = rowSums(M[,treestructure$descendant[child.left,], drop = FALSE])
-    Mc.right = rowSums(M[,treestructure$descendant[child.right,], drop = FALSE])
-    
-    if(mean(Mc.left) < mean(Mc.right)){
-      Mc = cbind(Mc.right, Mc.left)
-    }else{
-      Mc = cbind(Mc.left, Mc.right)
-    }
-    
-    Mc2 = Mc + 0.5
-    idx = which(rowSums(Mc) != 0)
-    if(length(idx) != 0){
-      Trt = Trt.ori[idx]; conf = conf.ori[idx,,drop=FALSE]; outcome = outcome.ori[idx]
-      G = log(Mc2[idx,-2]/as.numeric(Mc2[idx,2]))
-    }else{
-      Trt = Trt.ori; conf = conf.ori; outcome = outcome.ori
-      G = log(Mc2[,-2]/as.numeric(Mc2[,2]))
-    }
-    
-    if(interaction){
-      G2 = cbind(G, Trt*G)
-    }
-    
-    # For some internal node, one child have all obs being 0. We need to skip such internal node, and set the results to NA
-    condition1 = any(colSums(Mc) == 0)
-    if(all(condition1,verbose)) cat(sprintf("Some children have all observations being 0, skip internal node #%g\n", i))
-    
-    # rank < 3
-    condition2 = FALSE
-    if(interaction){
-      condition2 = (qr(cbind(Trt,G2))$rank < 3)
-      if(all(condition2, verbose)) cat(sprintf("Matrix (T, G, Trt*G) is not full rank, skip internal node #%g\n", i))
-    }
-    
-    # remove the subjects with all subcomponents being zero may result in collinearity
-    # the outcome may be unique after removing the subjects when is binary
-    condition3 = (qr(cbind(conf,Trt))$rank < (ncol(conf)+1)) || (length(unique(outcome)) == 1)
-    if(all(condition3, verbose)) cat(sprintf("Matrix (Covariates, Trt) is not full rank or outcome is unique, skip internal node #%g\n", i))
-    
-    if(any(condition1,condition2,condition3)){
-      chi.stat.alpha[i-K] = NA
-      z.stat.alpha[i-K] = NA
-      pval.alpha.asym[i-K] = NA
-      pval.alpha.perm[i-K] = NA
-      chi.stat.beta[i-K] = NA
-      z.stat.beta[i-K] = NA
-      pval.beta.asym[i-K] = NA
-      pval.beta.perm[i-K] = NA
-      next
-    }
-    
-    # compute residual forming matrix Rconf (Smith's method)
-    Rconf = diag(nrow(conf)) - conf %*% solve(t(conf) %*% conf) %*% t(conf)
-    
-    mod.full = summary(glm(G~0+conf+Trt,family = quasi()))
-    est = mod.full$coefficients["Trt","Estimate"]
-    mod.reduce = summary(glm(G~0+conf,family = quasi()))
-    mod.reduce.disp = mod.reduce$dispersion
-    mod.reduce.resid = mod.reduce$deviance.resid
-    TestAlpha = .test_alpha(G, Trt, conf, mod.reduce.resid, mod.reduce.disp)
-    stat = TestAlpha$stat
-    pval = TestAlpha$pval
-    
-    chi.stat.alpha[i-K] = stat
-    z.stat.alpha[i-K] = sqrt(stat)*sign(est)
-    pval.alpha.asym[i-K] = pval
-    
-    if(length(unique(outcome)) > 2) {
-      # continuous traits
-      if(interaction){
-        obj = SKAT_Null_Model(outcome~0+conf+Trt, out_type = "C")
-        TestBeta = .test_beta(outcome, G2, Trt, conf, obj = obj, test.type = "vc") # est[1] ~ mediator est[2] ~ exposure * mediator
-      }else{
-        mod = summary(lm(outcome~cbind(conf[,-1], Trt)))
-        mod.s2 = mod$sigma^2
-        mod.resid = mod$residuals
-        TestBeta = .test_beta(outcome, G, Trt, conf, resid.obs = mod.resid, s2.obs = mod.s2, test.type = "mv")
-      }
-    } else {
-      # binary traits
-      if(interaction){
-        obj = SKAT_Null_Model(outcome~0+conf+Trt, out_type = "D")
-        TestBeta = .test_beta(outcome, G2, Trt, conf, obj = obj, test.type = "vc") # est[1] ~ mediator est[2] ~ exposure * mediator
-      }else{
-        mod = glm(outcome~cbind(conf[,-1], Trt), family = "binomial")
-        mod.est = mod$coefficients
-        TestBeta = .test_beta(outcome, G, Trt, conf, est.obs = mod.est, test.type = "mv")
-      }
-    }
-    
-    chi.stat.beta[i-K] = TestBeta$stat
-    z.stat.beta[i-K] = sqrt(TestBeta$stat)*sign(sum(TestBeta$est))
-    pval.beta.asym[i-K] = TestBeta$pval
-    
+    #### here, visit every internal node of the tree and generate p-values for testing alpha and beta respectively
+    B.max = n.perm
     if(!is.null(n.perm)){
-      #### permutation for alpha
-      if(is.infinite(stat)){
-        pval.alpha.perm[i-K] = 1/(B.max+1)
-        if(verbose){
-          cat(sprintf("# of permutations for alpha: %g, Test statistic = Inf\n", B.max))
-          cat("Use Pseudo-ECDF approximation p-value\n")
-        }
-      }else{
-        m = 1
-        Nexc = 0
-        alpha.stat.perm = numeric(B.max)
-        while (Nexc < R.sel & m < B.max) {
-          TestAlpha_perm = .test_alpha(G, Rconf[sample(nrow(Rconf)),] %*% Trt, conf, mod.reduce.resid, mod.reduce.disp)
-          stat_perm = TestAlpha_perm$stat
-          if(stat_perm >= stat) Nexc = Nexc + 1
-          alpha.stat.perm[m] = stat_perm
-          m = m + 1
-        }
-        if(m < B.max){
-          pval.alpha.perm[i-K] = Nexc/(m-1)
-          if(verbose){
-            cat(sprintf("# of permutations for alpha: %g\n", m-1))
-            cat("Use ECDF approximation p-value\n")
-          }
-        }else{
-          if(Nexc <= 10){
-            pval.alpha.perm[i-K] = tryCatch(.gpd_approx(alpha.stat.perm, 250, stat), error=function(err) NA)
-            if(verbose){
-              cat(sprintf("# of permutations for alpha: %g\n", B.max))
-              cat("Use GPD approximation p-value\n")
-            }
-            if(is.na(pval.alpha.perm[i-K])){
-              pval.alpha.perm[i-K] = (Nexc+1)/(B.max+1)
-              if(verbose) cat("Fail to fit GPD, use Pseudo-ECDF approximation p-value\n")
-            }
-          }else{
-            pval.alpha.perm[i-K] = Nexc/B.max
-            if(verbose){
-              cat(sprintf("# of permutations for alpha: %g\n", B.max))
-              cat("Use ECDF approximation p-value\n")
-            }
-          }
-        }
+      R.sel = .choose_r(fdr.alpha/K, 0.05)
+      if(R.sel > B.max) warning(sprintf("The maximal permutation times (%g) is smaller than the chosen maximal number of successes (%g). 
+    The permutation p-value may not be precise enough. Please increase the maxmimal permutation times!", B.max, R.sel))
+      if(verbose){
+        cat(sprintf("Adapative permutation procedure perfroms %g times at most\n", B.max))
+        cat(sprintf("Adapative permutation procedure requires %g exceeds\n", R.sel))
       }
+    }
+    W.data = data.table(data.frame(tab, t(M)))
+    n.rank = ncol(tab)
+    otucols = names(W.data)[-(1:n.rank)]
+    n.level = n.rank-1
+    
+    subtree = chi.stat.alpha = z.stat.alpha = pval.alpha.asym = pval.alpha.perm = 
+      chi.stat.beta = z.stat.beta = pval.beta.asym = pval.beta.perm = NULL
+
+    for(k in 1:n.level){
+      Rank.low = paste("Rank", n.rank-k,sep="")
+      Rank.high = paste("Rank", n.rank-k+1,sep="")
       
-      #### permutation for beta
-      if(is.infinite(TestBeta$stat)){
-        pval.beta.perm[i-K] = 1/(B.max+1)
-        if(verbose){
-          cat(sprintf("# of permutations for beta: %g, Test statistic = Inf\n", B.max))
-          cat("Use Pseudo-ECDF approximation p-value\n")
-        }
-      }else{
-        m = 1
-        Nexc = 0
-        beta.stat.perm = numeric(B.max)
-        while (Nexc < R.sel & m < B.max) {
-          if(interaction){
-            # est[1] ~ mediator est[2] ~ exposure * mediator
-            tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G2, Trt, conf, obj = obj, test.type = "vc") 
+      tmp = table(tab[,n.rank-k])
+      level.uni = sort(names(tmp)[which(tmp>1)] )
+      m.level = length(level.uni)    
+      
+      tt = W.data[, lapply(.SD , sum, na.rm=TRUE), .SDcols=otucols, by=list( get(Rank.low), get(Rank.high) )]
+      setnames(tt, 1:2, c(Rank.low, Rank.high))
+      W.tax = as.vector(unlist(tt[, Rank.low, with=FALSE]))
+      W.count = data.matrix(tt[, otucols, with=FALSE])      
+      
+      current.parent = ori.tab.colnames[n.rank-k]
+      for(m in 1:m.level){
+        current.child = level.uni[m]
+        current.node = paste0(current.parent, ".", current.child)
+        if(verbose) cat(sprintf("=====Processing internal node #%s=====\n", current.node))
+        Mc = t(W.count[which(W.tax == level.uni[m]), , drop=FALSE])
+        remove.index = which(colSums(Mc) == 0)
+        if(length(remove.index) == ncol(Mc)){
+          if(verbose) cat("Some children have all observations being 0, skip node\n")
+          next
+        }else{
+          if(length(remove.index)>0){
+            Mc = Mc[, -remove.index, drop=FALSE] 
+          }
+          if(ncol(Mc) == 1){
+            if(verbose) cat("Only exists one child, skip node\n")
+            next
           }else{
-            if(length(unique(outcome)) > 2){
-              tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, resid.obs = mod.resid, s2.obs = mod.s2, test.type = "mv")
+            Mc2 = Mc + 0.5
+            idx = which(rowSums(Mc) != 0)
+            ref.id = which.max(colMeans(Mc2/rowSums(Mc2)))
+            if(length(idx) != 0){
+              Trt = Trt.ori[idx]; conf = conf.ori[idx,,drop=FALSE]; outcome = outcome.ori[idx]
+              G = log(Mc2[idx,-ref.id]/as.numeric(Mc2[idx,ref.id]))
             }else{
-              tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, est.obs = mod.est, test.type = "mv")
+              Trt = Trt.ori; conf = conf.ori; outcome = outcome.ori
+              G = log(Mc2[,-ref.id]/as.numeric(Mc2[,ref.id]))
             }
-          }
-          if(tmp_beta$stat >= TestBeta$stat) Nexc = Nexc + 1
-          beta.stat.perm[m] = tmp_beta$stat
-          m = m + 1
-        }
-        if(m < B.max){
-          pval.beta.perm[i-K] = Nexc/(m-1)
-          if(verbose){
-            cat(sprintf("# of permutations for beta: %g\n", m))
-            cat("Use ECDF approximation p-value\n")
-          }
-        }else{
-          if(Nexc <= 10){
-            pval.beta.perm[i-K] = tryCatch(.gpd_approx(beta.stat.perm, 250, TestBeta$stat), error=function(err) NA)
-            if(verbose){
-              cat(sprintf("# of permutations for beta: %g\n", B.max))
-              cat("Use GPD approximation p-value\n")
+            
+            if(interaction){
+              G2 = cbind(G, Trt*G)
             }
-            if(is.na(pval.beta.perm[i-K])){
-              pval.beta.perm[i-K] = (Nexc+1)/(B.max+1)
-              if(verbose) cat("Fail to fit GPD, use Pseudo-ECDF approximation p-value\n")
+            
+            # rank < 3
+            condition1 = FALSE
+            if(interaction){
+              condition1 = (qr(cbind(Trt,G2))$rank < (1+ncol(G2)))
+              if(all(condition1, verbose)) cat("Matrix (T, G, Trt*G) is not full rank, skip node\n")
             }
-          }else{
-            pval.beta.perm[i-K] = Nexc/B.max
-            if(verbose){
-              cat(sprintf("# of permutations for beta: %g\n", B.max))
-              cat("Use ECDF approximation p-value\n")
+            
+            # remove the subjects with all subcomponents being zero may result in collinearity
+            # the outcome may be unique after removing the subjects when is binary
+            condition2 = (qr(cbind(conf,Trt))$rank < (ncol(conf)+1)) || (length(unique(outcome)) == 1)
+            if(all(condition2, verbose)) cat("Matrix (Covariates, Trt) is not full rank or outcome is unique, skip node\n")
+            
+            # only have two effective observations
+            condition3 = (length(outcome) == 2)
+            if(all(condition3, verbose)) cat("The effective sample size equals to 2, skip node\n")
+            
+            if(any(condition1,condition2,condition3)){
+              chi.stat.alpha = c(chi.stat.alpha, NA)
+              z.stat.alpha = c(z.stat.alpha, NA)
+              pval.alpha.asym = c(pval.alpha.asym, NA)
+              pval.alpha.perm = c(pval.alpha.perm, NA)
+              chi.stat.beta = c(chi.stat.beta, NA)
+              z.stat.beta = c(z.stat.beta, NA)
+              pval.beta.asym = c(pval.beta.asym, NA)
+              pval.beta.perm = c(pval.beta.perm, NA)
+              next
+            }
+            subtree = c(subtree, current.node)
+            
+            Rconf = diag(nrow(conf)) - conf %*% solve(t(conf) %*% conf) %*% t(conf)
+            
+            if(is.matrix(G)){
+              mod.full = lm(G ~ 0+conf+Trt)
+              est = mod.full$coef["Trt",]
+              TestAlpha = .test_alpha_vc(G, Trt, conf)
+              stat = TestAlpha$stat
+              pval = TestAlpha$pval
+              
+              chi.stat.alpha = c(chi.stat.alpha, stat)
+              z.stat.alpha = c(z.stat.alpha, sqrt(stat)*sign(sum(est)))
+              pval.alpha.asym = c(pval.alpha.asym, pval)
+            }else{
+              mod.full = summary(glm(G~0+conf+Trt,family = quasi()))
+              est = mod.full$coefficients["Trt","Estimate"]
+              mod.reduce = summary(glm(G~0+conf,family = quasi()))
+              mod.reduce.disp = mod.reduce$dispersion
+              mod.reduce.resid = mod.reduce$deviance.resid
+              TestAlpha = .test_alpha(G, Trt, conf, mod.reduce.resid, mod.reduce.disp)
+              stat = TestAlpha$stat
+              pval = TestAlpha$pval
+              
+              chi.stat.alpha = c(chi.stat.alpha, stat)
+              z.stat.alpha = c(z.stat.alpha, sqrt(stat)*sign(est))
+              pval.alpha.asym = c(pval.alpha.asym, pval)
+            }
+            
+            if(length(unique(outcome)) > 2) {
+              # continuous traits
+              if(interaction){
+                obj = SKAT_Null_Model(outcome~0+conf+Trt, out_type = "C")
+                TestBeta = .test_beta(outcome, G2, Trt, conf, obj = obj, test.type = "vc")
+              }else{
+                if(is.matrix(G)){
+                  obj = SKAT_Null_Model(outcome~0+conf+Trt, out_type = "C")
+                  TestBeta = .test_beta_vc(outcome, G, Trt, conf, obj = obj) 
+                }else{
+                  mod = summary(lm(outcome~cbind(conf[,-1], Trt)))
+                  mod.s2 = mod$sigma^2
+                  mod.resid = mod$residuals
+                  TestBeta = .test_beta(outcome, G, Trt, conf, resid.obs = mod.resid, s2.obs = mod.s2, test.type = "mv")
+                }
+              }
+            }else{
+              # binary traits
+              if(interaction){
+                obj = SKAT_Null_Model(outcome~0+conf+Trt, out_type = "D")
+                TestBeta = .test_beta(outcome, G2, Trt, conf, obj = obj, test.type = "vc")
+              }else{
+                if(is.matrix(G)){
+                  obj = SKAT_Null_Model(outcome~0+conf+Trt, out_type = "D")
+                  TestBeta = .test_beta_vc(outcome, G, Trt, conf, obj = obj)
+                }else{
+                  mod = glm(outcome~cbind(conf[,-1], Trt), family = "binomial")
+                  mod.est = mod$coefficients
+                  TestBeta = .test_beta(outcome, G, Trt, conf, est.obs = mod.est, test.type = "mv")
+                }
+              }
+            }
+            
+            chi.stat.beta = c(chi.stat.beta, TestBeta$stat)
+            z.stat.beta = c(z.stat.beta, sqrt(TestBeta$stat)*sign(sum(TestBeta$est)))
+            pval.beta.asym = c(pval.beta.asym, TestBeta$pval)
+            
+            if(!is.null(n.perm)){
+              #### permutation for alpha
+              if(is.infinite(stat)){
+                pval.alpha.perm = c(pval.alpha.perm, 1/(B.max+1))
+                if(verbose){
+                  cat(sprintf("# of permutations for alpha: %g, Test statistic = Inf\n", B.max))
+                  cat("Use Pseudo-ECDF approximation p-value\n")
+                }
+              }else{
+                m = 1
+                Nexc = 0
+                alpha.stat.perm = numeric(B.max)
+                while (Nexc < R.sel & m < B.max) {
+                  TestAlpha_perm = .test_alpha_vc(G, Rconf[sample(nrow(Rconf)),] %*% Trt, conf)
+                  stat_perm = TestAlpha_perm$stat
+                  if(stat_perm >= stat) Nexc = Nexc + 1
+                  alpha.stat.perm[m] = stat_perm
+                  m = m + 1
+                }
+                if(m < B.max){
+                  pval.alpha.perm = c(pval.alpha.perm, Nexc/(m-1))
+                  if(verbose){
+                    cat(sprintf("# of permutations for alpha: %g\n", m-1))
+                    cat("Use ECDF approximation p-value\n")
+                  }
+                }else{
+                  if(Nexc <= 10){
+                    tmp.alpha.perm = tryCatch(.gpd_approx(alpha.stat.perm, 250, stat), error=function(err) NA)
+                    pval.alpha.perm = c(pval.alpha.perm, tmp.alpha.perm)
+                    if(verbose){
+                      cat(sprintf("# of permutations for alpha: %g\n", B.max))
+                      cat("Use GPD approximation p-value\n")
+                    }
+                    if(is.na(tmp.alpha.perm)){
+                      pval.alpha.perm = c(pval.alpha.perm, (Nexc+1)/(B.max+1))
+                      if(verbose) cat("Fail to fit GPD, use Pseudo-ECDF approximation p-value\n")
+                    }
+                  }else{
+                    pval.alpha.perm = c(pval.alpha.perm, Nexc/B.max)
+                    if(verbose){
+                      cat(sprintf("# of permutations for alpha: %g\n", B.max))
+                      cat("Use ECDF approximation p-value\n")
+                    }
+                  }
+                }
+              }
+              
+              #### permutation for beta
+              if(is.infinite(TestBeta$stat)){
+                pval.beta.perm = c(pval.beta.perm, 1/(B.max+1))
+                if(verbose){
+                  cat(sprintf("# of permutations for beta: %g, Test statistic = Inf\n", B.max))
+                  cat("Use Pseudo-ECDF approximation p-value\n")
+                }
+              }else{
+                m = 1
+                Nexc = 0
+                beta.stat.perm = numeric(B.max)
+                while (Nexc < R.sel & m < B.max) {
+                  if(interaction){
+                    tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G2, Trt, conf, obj = obj, test.type = "vc") 
+                  }else{
+                    if(length(unique(outcome)) > 2){
+                      if(is.matrix(G)){
+                        tmp_beta = .test_beta_vc(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, obj = obj) 
+                      }else{
+                        tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, resid.obs = mod.resid, s2.obs = mod.s2, test.type = "mv")
+                      }
+                    }else{
+                      if(is.matrix(G)){
+                        tmp_beta = .test_beta_vc(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, obj = obj)
+                      }else{
+                        tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, est.obs = mod.est, test.type = "mv")
+                      }
+                    }
+                  }
+                  if(tmp_beta$stat >= TestBeta$stat) Nexc = Nexc + 1
+                  beta.stat.perm[m] = tmp_beta$stat
+                  m = m + 1
+                }
+                if(m < B.max){
+                  pval.beta.perm = c(pval.beta.perm, Nexc/(m-1))
+                  if(verbose){
+                    cat(sprintf("# of permutations for beta: %g\n", m))
+                    cat("Use ECDF approximation p-value\n")
+                  }
+                }else{
+                  if(Nexc <= 10){
+                    tmp.beta.perm = tryCatch(.gpd_approx(beta.stat.perm, 250, TestBeta$stat), error=function(err) NA)
+                    pval.beta.perm = c(pval.beta.perm, tmp.beta.perm)
+                    if(verbose){
+                      cat(sprintf("# of permutations for beta: %g\n", B.max))
+                      cat("Use GPD approximation p-value\n")
+                    }
+                    if(is.na(tmp.beta.perm)){
+                      pval.beta.perm = c(pval.beta.perm, (Nexc+1)/(B.max+1))
+                      if(verbose) cat("Fail to fit GPD, use Pseudo-ECDF approximation p-value\n")
+                    }
+                  }else{
+                    pval.beta.perm = c(pval.beta.perm, Nexc/B.max)
+                    if(verbose){
+                      cat(sprintf("# of permutations for beta: %g\n", B.max))
+                      cat("Use ECDF approximation p-value\n")
+                    }
+                  }
+                }
+              }
             }
           }
         }
       }
+    }# lineage loop
+    
+  }
+  
+  if(input.type == "tree"){
+    K = .ntaxa(tree)
+    #### here, visit every internal node of the tree and generate p-values for testing alpha and beta respectively
+    B.max = n.perm
+    if(!is.null(n.perm)){
+      R.sel = .choose_r(fdr.alpha/K, 0.05)
+      if(R.sel > B.max) warning(sprintf("The maximal permutation times (%g) is smaller than the chosen maximal number of successes (%g). 
+    The permutation p-value may not be precise enough. Please increase the maxmimal permutation times!", B.max, R.sel))
+      if(verbose){
+        cat(sprintf("Adapative permutation procedure perfroms %g times at most\n", B.max))
+        cat(sprintf("Adapative permutation procedure requires %g exceeds\n", R.sel))
+      }
+    }
+    treestructure = .phylostructure(tree)
+    ## here perform tree-based method
+    chi.stat.alpha = chi.stat.beta = z.stat.alpha = z.stat.beta = pval.alpha.asym = pval.beta.asym = pval.alpha.perm = pval.beta.perm = numeric(tree$Nnode)
+    for (i in (K + 1):(K + tree$Nnode)) {
+      if(verbose) cat(sprintf("=====Processing internal node #%g=====\n", i))
+      child.left = treestructure$phylochildren[i,1]
+      child.right = treestructure$phylochildren[i,2]
       
+      Mc.left = rowSums(M[,treestructure$descendant[child.left,], drop = FALSE])
+      Mc.right = rowSums(M[,treestructure$descendant[child.right,], drop = FALSE])
+      
+      if(mean(Mc.left) < mean(Mc.right)){
+        Mc = cbind(Mc.right, Mc.left)
+      }else{
+        Mc = cbind(Mc.left, Mc.right)
+      }
+      
+      Mc2 = Mc + 0.5
+      idx = which(rowSums(Mc) != 0)
+      if(length(idx) != 0){
+        Trt = Trt.ori[idx]; conf = conf.ori[idx,,drop=FALSE]; outcome = outcome.ori[idx]
+        G = log(Mc2[idx,-2]/as.numeric(Mc2[idx,2]))
+      }else{
+        Trt = Trt.ori; conf = conf.ori; outcome = outcome.ori
+        G = log(Mc2[,-2]/as.numeric(Mc2[,2]))
+      }
+      
+      if(interaction){
+        G2 = cbind(G, Trt*G)
+      }
+      
+      # For some internal node, one child have all obs being 0. We need to skip such internal node, and set the results to NA
+      condition1 = any(colSums(Mc) == 0)
+      if(all(condition1,verbose)) cat(sprintf("Some children have all observations being 0, skip internal node #%g\n", i))
+      
+      # rank < 3
+      condition2 = FALSE
+      if(interaction){
+        condition2 = (qr(cbind(Trt,G2))$rank < 3)
+        if(all(condition2, verbose)) cat(sprintf("Matrix (T, G, Trt*G) is not full rank, skip internal node #%g\n", i))
+      }
+      
+      # remove the subjects with all subcomponents being zero may result in collinearity
+      # the outcome may be unique after removing the subjects when is binary
+      condition3 = (qr(cbind(conf,Trt))$rank < (ncol(conf)+1)) || (length(unique(outcome)) == 1)
+      if(all(condition3, verbose)) cat(sprintf("Matrix (Covariates, Trt) is not full rank or outcome is unique, skip internal node #%g\n", i))
+      
+      # only have two effective observations
+      condition4 = (length(outcome) == 2)
+      if(all(condition4, verbose)) cat(sprintf("The effective sample size equals to 2, skip internal node #%g\n", i))
+      
+      if(any(condition1,condition2,condition3,condition4)){
+        chi.stat.alpha[i-K] = NA
+        z.stat.alpha[i-K] = NA
+        pval.alpha.asym[i-K] = NA
+        pval.alpha.perm[i-K] = NA
+        chi.stat.beta[i-K] = NA
+        z.stat.beta[i-K] = NA
+        pval.beta.asym[i-K] = NA
+        pval.beta.perm[i-K] = NA
+        next
+      }
+      
+      # compute residual forming matrix Rconf (Smith's method)
+      Rconf = diag(nrow(conf)) - conf %*% solve(t(conf) %*% conf) %*% t(conf)
+      
+      mod.full = summary(glm(G~0+conf+Trt,family = quasi()))
+      est = mod.full$coefficients["Trt","Estimate"]
+      mod.reduce = summary(glm(G~0+conf,family = quasi()))
+      mod.reduce.disp = mod.reduce$dispersion
+      mod.reduce.resid = mod.reduce$deviance.resid
+      TestAlpha = .test_alpha(G, Trt, conf, mod.reduce.resid, mod.reduce.disp)
+      stat = TestAlpha$stat
+      pval = TestAlpha$pval
+      
+      chi.stat.alpha[i-K] = stat
+      z.stat.alpha[i-K] = sqrt(stat)*sign(est)
+      pval.alpha.asym[i-K] = pval
+      
+      if(length(unique(outcome)) > 2) {
+        # continuous traits
+        if(interaction){
+          obj = SKAT_Null_Model(outcome~0+conf+Trt, out_type = "C")
+          TestBeta = .test_beta(outcome, G2, Trt, conf, obj = obj, test.type = "vc") # est[1] ~ mediator est[2] ~ exposure * mediator
+        }else{
+          mod = summary(lm(outcome~cbind(conf[,-1], Trt)))
+          mod.s2 = mod$sigma^2
+          mod.resid = mod$residuals
+          TestBeta = .test_beta(outcome, G, Trt, conf, resid.obs = mod.resid, s2.obs = mod.s2, test.type = "mv")
+        }
+      } else {
+        # binary traits
+        if(interaction){
+          obj = SKAT_Null_Model(outcome~0+conf+Trt, out_type = "D")
+          TestBeta = .test_beta(outcome, G2, Trt, conf, obj = obj, test.type = "vc") # est[1] ~ mediator est[2] ~ exposure * mediator
+        }else{
+          mod = glm(outcome~cbind(conf[,-1], Trt), family = "binomial")
+          mod.est = mod$coefficients
+          TestBeta = .test_beta(outcome, G, Trt, conf, est.obs = mod.est, test.type = "mv")
+        }
+      }
+      
+      chi.stat.beta[i-K] = TestBeta$stat
+      z.stat.beta[i-K] = sqrt(TestBeta$stat)*sign(sum(TestBeta$est))
+      pval.beta.asym[i-K] = TestBeta$pval
+      
+      if(!is.null(n.perm)){
+        #### permutation for alpha
+        if(is.infinite(stat)){
+          pval.alpha.perm[i-K] = 1/(B.max+1)
+          if(verbose){
+            cat(sprintf("# of permutations for alpha: %g, Test statistic = Inf\n", B.max))
+            cat("Use Pseudo-ECDF approximation p-value\n")
+          }
+        }else{
+          m = 1
+          Nexc = 0
+          alpha.stat.perm = numeric(B.max)
+          while (Nexc < R.sel & m < B.max) {
+            TestAlpha_perm = .test_alpha(G, Rconf[sample(nrow(Rconf)),] %*% Trt, conf, mod.reduce.resid, mod.reduce.disp)
+            stat_perm = TestAlpha_perm$stat
+            if(stat_perm >= stat) Nexc = Nexc + 1
+            alpha.stat.perm[m] = stat_perm
+            m = m + 1
+          }
+          if(m < B.max){
+            pval.alpha.perm[i-K] = Nexc/(m-1)
+            if(verbose){
+              cat(sprintf("# of permutations for alpha: %g\n", m-1))
+              cat("Use ECDF approximation p-value\n")
+            }
+          }else{
+            if(Nexc <= 10){
+              pval.alpha.perm[i-K] = tryCatch(.gpd_approx(alpha.stat.perm, 250, stat), error=function(err) NA)
+              if(verbose){
+                cat(sprintf("# of permutations for alpha: %g\n", B.max))
+                cat("Use GPD approximation p-value\n")
+              }
+              if(is.na(pval.alpha.perm[i-K])){
+                pval.alpha.perm[i-K] = (Nexc+1)/(B.max+1)
+                if(verbose) cat("Fail to fit GPD, use Pseudo-ECDF approximation p-value\n")
+              }
+            }else{
+              pval.alpha.perm[i-K] = Nexc/B.max
+              if(verbose){
+                cat(sprintf("# of permutations for alpha: %g\n", B.max))
+                cat("Use ECDF approximation p-value\n")
+              }
+            }
+          }
+        }
+        
+        #### permutation for beta
+        if(is.infinite(TestBeta$stat)){
+          pval.beta.perm[i-K] = 1/(B.max+1)
+          if(verbose){
+            cat(sprintf("# of permutations for beta: %g, Test statistic = Inf\n", B.max))
+            cat("Use Pseudo-ECDF approximation p-value\n")
+          }
+        }else{
+          m = 1
+          Nexc = 0
+          beta.stat.perm = numeric(B.max)
+          while (Nexc < R.sel & m < B.max) {
+            if(interaction){
+              # est[1] ~ mediator est[2] ~ exposure * mediator
+              tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G2, Trt, conf, obj = obj, test.type = "vc") 
+            }else{
+              if(length(unique(outcome)) > 2){
+                tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, resid.obs = mod.resid, s2.obs = mod.s2, test.type = "mv")
+              }else{
+                tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, est.obs = mod.est, test.type = "mv")
+              }
+            }
+            if(tmp_beta$stat >= TestBeta$stat) Nexc = Nexc + 1
+            beta.stat.perm[m] = tmp_beta$stat
+            m = m + 1
+          }
+          if(m < B.max){
+            pval.beta.perm[i-K] = Nexc/(m-1)
+            if(verbose){
+              cat(sprintf("# of permutations for beta: %g\n", m))
+              cat("Use ECDF approximation p-value\n")
+            }
+          }else{
+            if(Nexc <= 10){
+              pval.beta.perm[i-K] = tryCatch(.gpd_approx(beta.stat.perm, 250, TestBeta$stat), error=function(err) NA)
+              if(verbose){
+                cat(sprintf("# of permutations for beta: %g\n", B.max))
+                cat("Use GPD approximation p-value\n")
+              }
+              if(is.na(pval.beta.perm[i-K])){
+                pval.beta.perm[i-K] = (Nexc+1)/(B.max+1)
+                if(verbose) cat("Fail to fit GPD, use Pseudo-ECDF approximation p-value\n")
+              }
+            }else{
+              pval.beta.perm[i-K] = Nexc/B.max
+              if(verbose){
+                cat(sprintf("# of permutations for beta: %g\n", B.max))
+                cat("Use ECDF approximation p-value\n")
+              }
+            }
+          }
+        }
+        
+      }
     }
   }
   
-  if(method == "jc"){
+  
+  if(method == "product"){
     alpha1.asym = .pi0_JC(na.omit(z.stat.alpha))
     alpha2.asym = .pi0_JC(na.omit(z.stat.beta))
     tmp.asym = .nullEstimation_prod(pval.alpha.asym, pval.beta.asym, alpha1.asym, alpha2.asym)
-  }else if(method == "storey"){
-    tmp.asym = .nullEstimation_minus(pval.alpha.asym, pval.beta.asym, lambda)
+  }else if(method == "maxp"){
+    tmp.asym = .nullEstimation_minus(pval.alpha.asym, pval.beta.asym, alpha1.asym, alpha2.asym, z.stat.alpha, z.stat.beta)
   }
 
   rawp.asym = tmp.asym$rawp
@@ -384,30 +728,71 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
   p.asym.adj = p.adjust(rawp.asym, method = "BH")
   sig.nodeID.asym = which(p.asym.adj < fdr.alpha)
   
-  taxa.names = tree$tip.label
-  if(length(sig.nodeID.asym) > 0){
-    sig.clade.asym = lapply(sig.nodeID.asym+K, function(x) taxa.names[which(treestructure$descendant[x,])])
-    names(sig.clade.asym) = as.character(sig.nodeID.asym+K)
-  }else{
-    sig.clade.asym = NULL
+  if(input.type == "table"){
+    if(length(sig.nodeID.asym) > 0){
+      sig.clade.asym = subtree[sig.nodeID.asym]
+    }else{
+      sig.clade.asym = NULL
+    }
+    names(rawp.asym) = subtree
+    df = as.data.frame(tab)
+    for (i in 1:ncol(df)) {
+      df[,i] = paste0(ori.tab.colnames[i],".",df[,i])
+    }
+    df$pathString = do.call(paste, c(df, sep = "/"))
+    tax.tree = as.Node(df, pathDelimiter = "/")
+    tree.vis = as.phylo.Node(tax.tree)
+    rawp = rep(NA, length(tree.vis$node.label))
+    names(rawp) = tree.vis$node.label
+    node.name = subtree
+    # all(node.name %in% tree.vis$node.label)
+    if(all(graph, is.null(n.perm))){
+      rawp[node.name] = rawp.asym
+      tree.vis$node.label = rawp
+      tree.vis$tip.label = gsub(paste0("^",ori.tab.colnames[length(ori.tab.colnames)],"\\."), "", tree.vis$tip.label)
+      
+      g.asym = ggtree(tree.vis, layout="circular") +
+        geom_point2(aes(subset=!isTip), shape=21, size=-log10(as.numeric(rawp))*3, fill = "red") +
+        geom_tiplab(size=2) + 
+        theme_tree(plot.margin=margin(5,5,5,5))
+      if(length(sig.nodeID.asym) > 0) {
+        nodelab = tree.vis$node.label[sig.clade.asym]
+        nodeids = nodeid(tree.vis, nodelab)
+        cladedat = data.frame(id=nodeids, class=LETTERS[1:length(sig.nodeID.asym)])
+        g.asym = g.asym +
+          geom_hilight(data=cladedat, mapping=aes(node=id), alpha=.6, fill="steelblue") +
+          geom_cladelab(data=cladedat, mapping=aes(node=id, label=class), vjust=-.5, hjust=-.5, fontsize=5, fontface=4)
+      }
+      print(g.asym)
+    }
   }
   
-  if(all(graph, is.null(n.perm))){
-    tree.vis = tree
-    tree.vis$node.label = rawp.asym
-    g.asym = ggtree(tree.vis, layout = "rectangular", branch.length = "none") + 
-      geom_point2(aes(subset=!isTip), shape=21, size=-log10(as.numeric(rawp.asym))*3, fill = "red") +
-      geom_tiplab(size=3) + 
-      theme_tree(plot.margin=margin(5,5,5,5))
-    
-    if(length(sig.nodeID.asym) > 0) {
-      labels = rep(NA, 2*K-1); labels[sig.nodeID.asym+K] = LETTERS[1:length(sig.nodeID.asym)]
-      g.asym = g.asym + geom_text2(aes(subset=!isTip, label=labels), vjust=-.5, hjust=-.5, angle = 0, size=5)
-      for (i in 1:length(sig.nodeID.asym)) {
-        g.asym = g.asym + geom_hilight(node = sig.nodeID.asym[i]+K, fill = "steelblue", alpha = .6)
-      }
+  if(input.type == "tree"){
+    taxa.names = tree$tip.label
+    if(length(sig.nodeID.asym) > 0){
+      sig.clade.asym = lapply(sig.nodeID.asym+K, function(x) taxa.names[which(treestructure$descendant[x,])])
+      names(sig.clade.asym) = as.character(sig.nodeID.asym+K)
+    }else{
+      sig.clade.asym = NULL
     }
-    print(g.asym)
+    
+    if(all(graph, is.null(n.perm))){
+      tree.vis = tree
+      tree.vis$node.label = rawp.asym
+      g.asym = ggtree(tree.vis, layout = "rectangular", branch.length = "none") + 
+        geom_point2(aes(subset=!isTip), shape=21, size=-log10(as.numeric(rawp.asym))*3, fill = "red") +
+        geom_tiplab(size=2) + 
+        theme_tree(plot.margin=margin(5,5,5,5))
+      
+      if(length(sig.nodeID.asym) > 0) {
+        labels = rep(NA, 2*K-1); labels[sig.nodeID.asym+K] = LETTERS[1:length(sig.nodeID.asym)]
+        g.asym = g.asym + geom_text2(aes(subset=!isTip, label=labels), vjust=-.5, hjust=-.5, angle = 0, size=5)
+        for (i in 1:length(sig.nodeID.asym)) {
+          g.asym = g.asym + geom_hilight(node = sig.nodeID.asym[i]+K, fill = "steelblue", alpha = .6)
+        }
+      }
+      print(g.asym)
+    }
   }
   
   rawp.asym.rm = na.omit(rawp.asym)
@@ -417,14 +802,15 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
   rslt = list(PhyloMed.A = list(node.pval = rawp.asym, sig.clade = sig.clade.asym, 
                                 null.prop = null.prop.est.asym, global.pval = globalp.asym))
   
-  
   if(!is.null(n.perm)){
-    if(method == "jc"){
+    if(method == "product"){
       alpha1.perm = .pi0_JC(na.omit(abs(qnorm(pval.alpha.perm/2, lower.tail = FALSE))*sign(z.stat.alpha)))
       alpha2.perm = .pi0_JC(na.omit(abs(qnorm(pval.beta.perm/2, lower.tail = FALSE))*sign(z.stat.beta)))
       tmp.perm = .nullEstimation_prod(pval.alpha.perm, pval.beta.perm, alpha1.perm, alpha2.perm)
-    }else if(method == "storey"){
-      tmp.perm = .nullEstimation_minus(pval.alpha.perm, pval.beta.perm, lambda)
+    }else if(method == "maxp"){
+      tmp.perm = .nullEstimation_minus(pval.alpha.perm, pval.beta.perm, alpha1.perm, alpha2.perm,
+                                       abs(qnorm(pval.alpha.perm/2, lower.tail = FALSE))*sign(z.stat.alpha),
+                                       abs(qnorm(pval.beta.perm/2, lower.tail = FALSE))*sign(z.stat.beta))
     }
 
     rawp.perm = tmp.perm$rawp
@@ -434,28 +820,57 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
     p.perm.adj = p.adjust(rawp.perm, method = "BH")
     sig.nodeID.perm = which(p.perm.adj < fdr.alpha)
     
-    if(length(sig.nodeID.perm) > 0){
-      sig.clade.perm = lapply(sig.nodeID.perm+K, function(x) taxa.names[which(treestructure$descendant[x,])])
-      names(sig.clade.perm) = as.character(sig.nodeID.perm+K)
-    }else{
-      sig.clade.perm = NULL
+    if(input.type == "table"){
+      if(length(sig.nodeID.perm) > 0){
+        sig.clade.perm = subtree[sig.nodeID.perm]
+      }else{
+        sig.clade.perm = NULL
+      }
+      names(rawp.perm) = subtree
+      if(graph){
+        rawp[node.name] = rawp.perm
+        tree.vis$node.label = rawp
+        
+        g.perm = ggtree(tree.vis, layout="circular") +
+          geom_point2(aes(subset=!isTip), shape=21, size=-log10(as.numeric(rawp))*3, fill = "red") +
+          geom_tiplab(size=2) + 
+          theme_tree(plot.margin=margin(5,5,5,5))
+        if(length(sig.nodeID.perm) > 0) {
+          nodelab = tree.vis$node.label[sig.clade.perm]
+          nodeids = nodeid(tree.vis, nodelab)
+          cladedat = data.frame(id=nodeids, class=LETTERS[1:length(sig.nodeID.perm)])
+          g.perm = g.perm +
+            geom_hilight(data=cladedat, mapping=aes(node=id), alpha=.6, fill="steelblue") +
+            geom_cladelab(data=cladedat, mapping=aes(node=id, label=class), vjust=-.5, hjust=-.5, fontsize=5, fontface=4)
+        }
+        print(g.perm)
+      }
     }
     
-    if(graph){
-      tree.vis = tree
-      tree.vis$node.label = rawp.perm
-      g.perm = ggtree(tree.vis, layout = "rectangular", branch.length = "none") + 
-        geom_point2(aes(subset=!isTip), shape=21, size=-log10(as.numeric(rawp.asym))*3, fill = "red") +
-        geom_tiplab(size=3) + 
-        theme_tree(plot.margin=margin(5,5,5,5))
-      if(length(sig.nodeID.perm) > 0) {
-        labels = rep(NA, 2*K-1); labels[sig.nodeID.perm+K] = LETTERS[1:length(sig.nodeID.perm)]
-        g.perm = g.perm + geom_text2(aes(subset=!isTip, label=labels), vjust=-.5, hjust=-.5, angle = 0, size=5)
-        for (i in 1:length(sig.nodeID.perm)) {
-          g.perm = g.perm + geom_hilight(node = sig.nodeID.perm[i]+K, fill = "steelblue", alpha = .6)
-        }
+    if(input.type == "tree"){
+      if(length(sig.nodeID.perm) > 0){
+        sig.clade.perm = lapply(sig.nodeID.perm+K, function(x) taxa.names[which(treestructure$descendant[x,])])
+        names(sig.clade.perm) = as.character(sig.nodeID.perm+K)
+      }else{
+        sig.clade.perm = NULL
       }
-      print(g.perm)
+      
+      if(graph){
+        tree.vis = tree
+        tree.vis$node.label = rawp.perm
+        g.perm = ggtree(tree.vis, layout = "rectangular", branch.length = "none") + 
+          geom_point2(aes(subset=!isTip), shape=21, size=-log10(as.numeric(rawp.asym))*3, fill = "red") +
+          geom_tiplab(size=3) + 
+          theme_tree(plot.margin=margin(5,5,5,5))
+        if(length(sig.nodeID.perm) > 0) {
+          labels = rep(NA, 2*K-1); labels[sig.nodeID.perm+K] = LETTERS[1:length(sig.nodeID.perm)]
+          g.perm = g.perm + geom_text2(aes(subset=!isTip, label=labels), vjust=-.5, hjust=-.5, angle = 0, size=5)
+          for (i in 1:length(sig.nodeID.perm)) {
+            g.perm = g.perm + geom_hilight(node = sig.nodeID.perm[i]+K, fill = "steelblue", alpha = .6)
+          }
+        }
+        print(g.perm)
+      }
     }
     
     rawp.perm.rm = na.omit(rawp.perm)
@@ -468,13 +883,20 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
   }
   
   OTU = otu_table(M, taxa_are_rows = FALSE)
-  TAX = NULL
+  if(input.type == "table"){
+    TAX = tax_table(tab)
+    physeq.tree = NULL
+  }
+  if(input.type == "tree"){
+    TAX = NULL
+    physeq.tree = tree
+  }
+
   meta.df = as.data.frame(cbind(Trt.ori, outcome.ori, conf.ori[,-1]))
   names(meta.df)[1:2] = c("treatment", "outcome")
   rownames(meta.df) = rownames(OTU)
   meta.data = sample_data(meta.df)
   # sample_names(meta.data) = rownames(OTU)
-  physeq.tree = tree
   physeq = phyloseq(OTU, TAX, meta.data, physeq.tree)
   rslt.comb = list(clean.data = physeq, rslt = rslt)
   return(rslt.comb)
@@ -816,7 +1238,9 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
   tmp = pmax(input.pvals[,1], input.pvals[,2])
   nmed = length(tmp)
   cdf12 = input.pvals
-  input.pvals = input.pvals + runif(tmp, min = 0, max = 1e-7)
+  if(length(which(input.pvals == 1)) > 0)
+    input.pvals[input.pvals == 1] = input.pvals[input.pvals == 1] - runif(length(which(input.pvals == 1)), min = 0, max = 1e-7)
+  input.pvals = input.pvals + runif(length(tmp)*2, min = 0, max = 1e-8)
   xx1 = c(0, input.pvals[order(input.pvals[, 1]), 1])
   yy1 = c(0, seq(1, nmed, by = 1)/nmed)
   gfit1 = gcmlcm(xx1, yy1, type = "lcm")
@@ -880,25 +1304,47 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
   return(rslt)
 }
 
-.nullEstimation_minus <- function (pval.alpha, pval.beta, lambda) {
+.nullEstimation_minus <- function (pval.alpha, pval.beta, alpha1, alpha2, z1, z2) {
   # alpha00: a=0 and b=0
   # alpha01: a=0 and b!=0
   # alpha10: a!=0 and b=0
   
   input.pvals = cbind(pval.alpha, pval.beta)
+  input.z = cbind(z1, z2)
   idx.na = which(!complete.cases(input.pvals))
   input.pvals = input.pvals[complete.cases(input.pvals), ]
+  input.z = input.z[complete.cases(input.z), ]
+  z.max = z.min = numeric(nrow(input.z))
+  for (i in 1:nrow(input.z)) {
+    z.max[i] = ifelse(abs(input.z[i,1]) >= abs(input.z[i,2]), input.z[i,1], input.z[i,2])
+    z.min[i] = ifelse(abs(input.z[i,1]) <= abs(input.z[i,2]), input.z[i,1], input.z[i,2])
+  }
   
-  alpha1 = min(mean(input.pvals[,1]>=lambda)/(1-lambda), 1)
-  alpha2 = min(mean(input.pvals[,2]>=lambda)/(1-lambda), 1)
-  alpha00 = min(mean(input.pvals[,2]>=lambda & input.pvals[,1]>=lambda)/(1-lambda)^2, 1)
-  alpha10 = max(alpha2-alpha00, 0)
-  alpha01 = max(alpha1-alpha00, 0)
+  w = .pi0_JC(z.min)
+  alphastar = min(w, 1)
+  alpha00 = min(alpha1+alpha2-alphastar, 1)
+  alpha10 = max(alphastar-alpha1, 0)
+  alpha01 = max(alphastar-alpha2, 0)
+  alpha11 = max(1-alphastar, 0)
+  w = alpha00+alpha01+alpha10
+  alpha00.r = alpha00/w
+  alpha01.r = alpha01/w
+  alpha10.r = alpha10/w
+  alpha1.r = alpha00.r + alpha01.r
+  alpha2.r = alpha00.r + alpha10.r
+  
+  # alpha1 = min(mean(input.pvals[,1]>=lambda)/(1-lambda), 1)
+  # alpha2 = min(mean(input.pvals[,2]>=lambda)/(1-lambda), 1)
+  # alpha00 = min(mean(input.pvals[,2]>=lambda & input.pvals[,1]>=lambda)/(1-lambda)^2, 1)
+  # alpha10 = max(alpha2-alpha00, 0)
+  # alpha01 = max(alpha1-alpha00, 0)
   
   tmp = pmax(input.pvals[,1], input.pvals[,2])
   nmed = length(tmp)
   cdf12 = input.pvals
-  input.pvals = input.pvals + runif(tmp, min = 0, max = 1e-7)
+  if(length(which(input.pvals == 1)) > 0)
+    input.pvals[input.pvals == 1] = input.pvals[input.pvals == 1] - runif(length(input.pvals == 1), min = 0, max = 1e-7)
+  input.pvals = input.pvals + runif(length(tmp)*2, min = 0, max = 1e-8)
   xx1 = c(0, input.pvals[order(input.pvals[, 1]), 1])
   yy1 = c(0, seq(1, nmed, by = 1)/nmed)
   gfit1 = gcmlcm(xx1, yy1, type = "lcm")
@@ -909,11 +1355,11 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
   gfit2 = gcmlcm(xx2, yy2, type = "lcm")
   xknots2 = gfit2$x.knots[-1]
   Fknots2 = cumsum(diff(gfit2$x.knots) * gfit2$slope.knots)
-  if (alpha1 != 1) 
-    Fknots1 = (Fknots1 - alpha1 * xknots1)/(1 - alpha1)
+  if (alpha1.r != 1) 
+    Fknots1 = (Fknots1 - alpha1.r * xknots1)/(1 - alpha1.r)
   else Fknots1 = rep(0, length(xknots1))
-  if (alpha2 != 1) 
-    Fknots2 = (Fknots2 - alpha2 * xknots2)/(1 - alpha2)
+  if (alpha2.r != 1) 
+    Fknots2 = (Fknots2 - alpha2.r * xknots2)/(1 - alpha2.r)
   else Fknots2 = rep(0, length(xknots2))
   orderq1 = orderq2 = gcdf1 = gcdf2 = tmp
   for (i in 1:length(xknots1)) {
@@ -948,8 +1394,8 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
   gcdf2 = ifelse(gcdf2 > 1, 1, gcdf2)
   cdf12[, 1] = gcdf1
   cdf12[, 2] = gcdf2
-  rawp = (tmp * cdf12[, 2] * alpha01) + (tmp * cdf12[, 1] * alpha10) + (tmp^2 * alpha00)
-  
+  rawp = (tmp * cdf12[, 2] * alpha01.r) + (tmp * cdf12[, 1] * alpha10.r) + (tmp^2 * alpha00.r)
+
   rawp.wNA = numeric(length(pval.alpha))
   if(length(idx.na) > 0){
     rawp.wNA[idx.na] = NA
@@ -957,7 +1403,7 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
   }else{
     rawp.wNA = rawp
   }
-  rslt = list(alpha10 = alpha10, alpha01 = alpha01, alpha00 = alpha00, alpha1 = alpha1, alpha2 = alpha2, rawp = rawp.wNA)
+  rslt = list(alpha10 = alpha10.r, alpha01 = alpha01.r, alpha00 = alpha00.r, alpha1 = alpha1, alpha2 = alpha2, rawp = rawp.wNA)
   return(rslt)
 }
 
@@ -985,4 +1431,59 @@ phyloMed <- function(treatment, mediators, outcome, tree, method = "JC", lambda 
     }
   }
   return(R)
+}
+
+# variance component test for alpha
+# Ref: YT Huang and X Lin, BMC Bioinformatics 2013, 14:210
+# Ref: YT Huang, Biometrics 2019, https://doi.org/10.1111/biom.13073
+.test_alpha_vc <- function(G, Trt, covariates){
+  G.res = resid(lm(G~0+covariates))
+  Trt.res = resid(lm(Trt~0+covariates))
+  Y1 = t(G.res)
+  X = Trt.res
+  n = dim(Y1)[2]
+  p = dim(Y1)[1]
+  Y = as.numeric(as.matrix(Y1))
+  
+  ## Calculate working covariance
+  covY.ind = matrix(0, p, p)
+  diag(covY.ind) = 1
+  v.work = covY.ind
+  
+  ## Calculate observed Q
+  Y1.bar = apply(Y1, 1, mean)
+  v.work.inv = chol2inv(chol(v.work))	
+  Q.half = 0
+  for (i in 1:n) Q.half = Q.half+(X[i]*t(Y1[,i]-Y1.bar)%*%v.work.inv)
+  Q = sum(Q.half^2)	
+  
+  ## Calculate Q under the null by permutation
+  Q.perm = NULL
+  Qj.perm = NULL
+  for (pp in 1:100){
+    x.perm = sample(X)
+    Q.temp.perm = t(as.numeric(as.matrix(Y1-Y1.bar))/rep(1, n))*rep(x.perm, each=p)
+    Q.half.perm = apply(matrix(Q.temp.perm, nrow=p), 1, sum)
+    Q.perm = c(Q.perm, sum(Q.half.perm^2))
+  }
+  Q.perm.sub = Q.perm
+  
+  ## Calculate p-value scaled chi-square p-value
+  stat = Q*2*mean(Q.perm.sub)/var(Q.perm.sub)
+  pval = pchisq(stat, df = 2*mean(Q.perm.sub)^2/var(Q.perm.sub), lower.tail=F)
+  return(list(stat = stat, pval = pval))
+}
+
+.test_beta_vc <- function(outcome, G, Trt, conf, obj){
+  m = ncol(G)
+  pval = SKAT(G, obj, is_check_genotype=FALSE, kernel="linear")$p.value
+  stat = qchisq(1-pval, df=1)
+  if(length(unique(outcome)) > 2 ){
+    # continuous trait
+    est = summary(lm(outcome ~ G + cbind(conf[,-1], Trt)))$coefficients[1+1:m,1] 
+  }else{
+    # binary trait
+    est = summary(glm(outcome ~ G + cbind(conf[,-1], Trt), family = "binomial"))$coefficients[1+1:m,1] 
+  }
+  return(list(stat=stat, est=est, pval=pval))
 }
