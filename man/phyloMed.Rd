@@ -9,8 +9,7 @@ phyloMed(
   mediators,
   outcome,
   tree,
-  method = "JC",
-  lambda = 0.5,
+  pi.method = "product",
   confounders = NULL,
   interaction = FALSE,
   fdr.alpha = 0.05,
@@ -22,19 +21,17 @@ phyloMed(
 \arguments{
 \item{treatment}{A numeric vector of the treatment.}
 
-\item{mediators}{A named numeric matrix containing microbiome abundance. Each row is a subject and each column is a taxon. 
+\item{mediators}{A named numeric matrix containing microbiome abundance. Each row is a subject and each column is an OTU or a taxon. 
 Row name contains the subject ID and column name contains the taxon name.}
 
 \item{outcome}{A numeric vector of continuous or binary outcome.}
 
-\item{tree}{A \code{phylo-class} object. 
-The tip labels in the \code{tree} should overlap with the column names in the \code{mediators} matrix.}
+\item{tree}{A phylogenetic tree (\code{phylo-class} object) or a taxonomy table (\code{matrix-class}). 
+The tip labels in the phylogenetic tree or the row names in the taxonomy table should overlap with the column names in the \code{mediators} matrix. 
+The column names in the taxonomy table should start from the higher level to lower level, e.g., from kingdom to genus.}
 
-\item{method}{An optional character string denotes the method to used in estimate proportion of null. Can be abbreviated.
-Default method is \code{"JC"}, an alternative method is \code{"Storey"}.}
-
-\item{lambda}{An optional numeric tuning parameter between 0 and 1, need to be specified when the method is \code{"Storey"}.
-Default is \code{0.5}.}
+\item{pi.method}{An optional character string denotes the method to used in estimate proportion of null. 
+Default method is \code{"product"}, an alternative method is \code{"maxp"}.}
 
 \item{confounders}{An optional numeric vector or matrix containing confounders that may affect the 
 treatment, mediators and outcome. 
@@ -54,7 +51,7 @@ Default is \code{NULL}. See Details.}
 \item{verbose}{An optional logical value. If \code{TRUE}, information of the test on each node will be printed.
 Default is \code{FALSE}.}
 
-\item{graph}{An optional logical value. If \code{TRUE}, generate a graph that contains a phylogenetic tree with
+\item{graph}{An optional logical value. If \code{TRUE}, generate a graph that contains a phylogenetic tree or taxonomic tree with
 identified mediating nodes highlighted. 
 Default is \code{FALSE}. See Details.}
 }
@@ -64,6 +61,7 @@ A \code{phyloseq}-class object named \code{clean.data} and a list named \code{rs
 \code{clean.data} contains the following components:
 \item{\code{sample_data}}{Input treatment, outcome and confounders.}
 \item{\code{otu_table}}{The abundance data for the taxa that are present on the tips of the \code{phy_tree}.}
+\item{\code{tax_table}}{The taxonomy table with rows exactly match the taxa in the \code{otu_table}.}
 \item{\code{phy_tree}}{The binary and rooted phylogenetic tree with tips exactly match the taxa in the \code{otu_table}.}
 
 If \code{n.perm} is not \code{NULL}, the function will return two lists in \code{rslt} named \code{PhyloMed.A} and \code{PhyloMed.P}, respectively.
@@ -74,9 +72,9 @@ Each list contains the following components:
 \item{\code{sig.clade}}{A list of significant nodes with their descendants.}
 \item{\code{null.prop}}{A vector of the estimated proportion of different types of null hypotheses 
 across all local mediation tests.}
-\item{\code{global.pval}}{A global test p-value using harmonic mean (Wilson, 2019).}
+\item{\code{global.pval}}{A global test p-value using harmonic mean.}
 
-If \code{graph} is \code{TRUE}, the phylogenetic tree will be plot. The size of the circle at each internal node is proportional to 
+If \code{graph} is \code{TRUE}, the phylogenetic or taxonomic tree will be plot. The size of the circle at each internal node is proportional to 
 \eqn{-\log_{10}}(subcomposition p-value), the larger circle indicates a smaller p-value. The significant nodes are highlighted by blue rectangle.
 }
 \description{
@@ -84,8 +82,8 @@ If \code{graph} is \code{TRUE}, the phylogenetic tree will be plot. The size of 
 The method leverages the hierarchical phylogeny relationship among different microbial taxa to decompose the
 complex mediation model on the full microbial composition into multiple simple independent local mediation models
 on subcompositions. The \code{phyloMed} function (a) performs the mediation test for the subcomposition at each internal node
-of the phylogenetic tree and pinpoint the mediating nodes with significant test p-values; and (b) combine all subcomposition 
-p-values to  assess the overall mediation effect of the entire microbial community.
+of the phylogenetic tree or taxonomic tree and pinpoint the mediating nodes with significant test p-values; and (b) combine all subcomposition 
+p-values to assess the overall mediation effect of the entire microbial community.
 }
 \details{
 PhyloMed uses the treatment-mediator association test p-value and mediation-outcome association test p-value
@@ -104,13 +102,16 @@ M = data.cecal$mediators
 Y = data.cecal$outcome
 tree = data.cecal$tree
 rslt.phylomed = phyloMed(Trt, M, Y, tree, graph = TRUE)
+# Run test
+Trt = data.zeeviD$treatment
+M = data.zeeviD$mediators
+Y = data.zeeviD$outcome
+tree = data.zeeviD$tree
+rslt.phylomed = phyloMed(Trt, M, Y, tree, graph = TRUE)
 
 }
 \references{
-Hong, Q., Chen G., and Tang Z-Z.. Testing mediation effect of microbial communities on a phylogenetic tree. Manuscript.
-
-Wilson, D. J. (2019). The harmonic mean p-value for combining dependent tests. 
-\emph{Proceedings of the National Academy of Sciences} 116(4), 1195-1200.
+Hong, Q., Chen G., and Tang Z-Z.. PhyloMed: a phylogeny-based test of mediation effect in microbiome. Manuscript.
 }
 \seealso{
 \code{\link{prepareTree}}
