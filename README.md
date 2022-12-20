@@ -51,6 +51,7 @@ Install again, after dependencies have been installed. You should now be done if
 library(miMediation)
 help(package = "miMediation")
 ?data.cecal
+?data.zeeviD
 ?phyloMed
 ?prepareTree
 ```
