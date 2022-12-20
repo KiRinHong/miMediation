@@ -108,7 +108,7 @@ phyloMed <- function(treatment, mediators, outcome, tree, pi.method = "product",
   
   if(!is.numeric(treatment)) stop("Treatment is not a numeric vector!")
   if(!is.numeric(outcome)) stop("Outcome is not a numeric vector!")
-  if(class(tree) != "phylo"){
+  if(any(class(tree) %in% "phylo")){
     if(any(is.matrix(tree), is.data.frame(tree))){
       if(is.data.frame(tree)) tax.tab = as.matrix(tree)
       if(is.matrix(tree)) tax.tab = tree
