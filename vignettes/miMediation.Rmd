@@ -3,7 +3,9 @@ title: "Tutorial: testing microbiome mediation effect using miMediation"
 author: "Qilin Hong"
 date: "Last compiled on `r format(Sys.time(), '%d %B, %Y')`"
 output: 
-  pdf_document
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
 bibliography: references.bib 
 vignette: >
   %\VignetteIndexEntry{Tutorial: testing microbiome mediation effect using miMediation}
@@ -62,10 +64,9 @@ $\hat{\pi}_{01}=\hat{\pi}_{0\bullet}(1-\hat{\pi}_{\bullet0})/\hat{\pi}_0$, where
 - "maxp" method: 
 $\hat{\pi}_{00}=(\hat{\pi}_{0\bullet}+\hat{\pi}_{\bullet0}-\hat{\pi}_0)/\hat{\pi}_0$, 
 $\hat{\pi}_{10}=(\hat{\pi}_0-\hat{\pi}_{0\bullet})/\hat{\pi}_0$, and
-$\hat{\pi}_{01}=(\hat{\pi}_0-\hat{\pi}_{\bullet0})/\hat{\pi}_0$, where 
-$\hat{\pi}_{0\bullet}, \hat{\pi}_{\bullet0}, \hat{\pi}_0$ are estimated by applying Jin and Cai's method (@jin2007estimating) to$P_{\alpha_j},P_{\beta_j},P_{\max_j}$.
+$\hat{\pi}_{01}=(\hat{\pi}_0-\hat{\pi}_{\bullet0})/\hat{\pi}_0$.
 
-After obtaining the $p$-values on all internal nodes, we apply Benjamini-Hochberg (BH) false discovery rate procedure (@benjamini1995controlling) to identify a collection of nodes on the phylogenetic tree with significant mediation effects. To test the global mediation null hypothesis $H_0: \cap_{j=1}^J H^j_0$, we apply the harmonic mean $p$-value (HMP) method (@wilson2019harmonic) to combine local mediation $p$-values.
+Note that $\hat{\pi}_{0\bullet}, \hat{\pi}_{\bullet0}, \hat{\pi}_0$ are estimated by applying Jin and Cai's method (@jin2007estimating) to $P_{\alpha_j},P_{\beta_j},P_{\max_j}$. After obtaining the $p$-values on all internal nodes, we apply Benjamini-Hochberg (BH) false discovery rate procedure (@benjamini1995controlling) to identify a collection of nodes on the phylogenetic tree with significant mediation effects. To test the global mediation null hypothesis $H_0: \cap_{j=1}^J H^j_0$, we apply the harmonic mean $p$-value (HMP) method (@wilson2019harmonic) to combine local mediation $p$-values.
 
 ## Application with phylognetic information: Cecal data
 
@@ -110,7 +111,8 @@ The output consists of four components:
   - `null.prop`: estimated proportion of three disjoint component null hypotheses.
   - `global.pval`: global test $p$-value.
 
-Note that there is one internal node (Node144) with p-value being NA. The reason is that the treatment variable at this node is all equals 
+Note that p-value is NA at internal node 144. If we set `verbose=TRUE`, we could know the reason during the process. The underlying reason is that all values in the treatment variable equal to one after removing the subjects with subcomposition being zero. Thus, we skip this specific node.
+
 In the figure above, the size of the circle on internal node is proportional to $-\log_{10}(\text{subcompostion mediation p-value }p_j)$, where $p_j$ lives in the `node.pval` output. The identified mediation node is highlighted by a blue rectangle. 
 
 ## Application with taxonomic information: ZeeviD data
@@ -133,8 +135,8 @@ head(tree)
 
 ```{r tax-tree-plot,fig.width=8, fig.height=8, fig.show='hold',message=FALSE,warning=FALSE}
 # run asymptotic result by default
-demo.rsltlst <- phyloMed(Trt, M, Y, tree = tree, f
-                         dr.alpha = 0.1, graph = "circular")
+demo.rsltlst <- phyloMed(Trt, M, Y, tree = tree, 
+                         fdr.alpha = 0.1, graph = "circular")
 # take a look at phyloseq-class object
 demo.physeq <- demo.rsltlst$clean.data
 demo.physeq
