@@ -776,7 +776,7 @@ phyloMed <- function(treatment, mediators, outcome, confounders = NULL, interact
         cladedat = data.frame(id=nodeids, class=names(sig.clade.asym))
         g.asym = g.asym +
           geom_hilight(data=cladedat, mapping=aes(node=id), alpha=.6, fill="steelblue") +
-          geom_cladelab(data=cladedat, mapping=aes(node=id, label=class), vjust=-.3, hjust=-.3, fontsize=3, fontface=4)
+          geom_cladelab(data=cladedat, mapping=aes(node=id, label=class), vjust=-.5, hjust=-.5, fontsize=3, fontface=4)
       }
       print(g.asym)
     }
@@ -801,7 +801,7 @@ phyloMed <- function(treatment, mediators, outcome, confounders = NULL, interact
       
       if(length(sig.nodeID.asym) > 0) {
         labels = rep(NA, 2*K-1); labels[sig.nodeID.asym+K] = names(sig.clade.asym)
-        g.asym = g.asym + geom_text2(aes(subset=!isTip, label=labels), vjust=-.3, hjust=-.3, angle = 0, size=3)
+        g.asym = g.asym + geom_text2(aes(subset=!isTip, label=labels), vjust=-.5, hjust=-.5, angle = 0, size=3)
         for (i in 1:length(sig.nodeID.asym)) {
           g.asym = g.asym + geom_hilight(node = sig.nodeID.asym[i]+K, fill = "steelblue", alpha = .6)
         }
@@ -885,7 +885,7 @@ phyloMed <- function(treatment, mediators, outcome, confounders = NULL, interact
           theme_tree(plot.margin=margin(5,5,5,5))
         if(length(sig.nodeID.perm) > 0) {
           labels = rep(NA, 2*K-1); labels[sig.nodeID.perm+K] = names(sig.clade.perm)
-          g.perm = g.perm + geom_text2(aes(subset=!isTip, label=labels), vjust=-.3, hjust=-.3, angle = 0, size=3)
+          g.perm = g.perm + geom_text2(aes(subset=!isTip, label=labels), vjust=-.5, hjust=-.5, angle = 0, size=3)
           for (i in 1:length(sig.nodeID.perm)) {
             g.perm = g.perm + geom_hilight(node = sig.nodeID.perm[i]+K, fill = "steelblue", alpha = .6)
           }
