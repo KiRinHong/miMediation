@@ -11,7 +11,7 @@ knitr::opts_chunk$set(
   comment = ""
 )
 
-## ----demo-plot, fig.width=8, fig.height=6, echo=FALSE-------------------------
+## ----demo-plot, fig.width=8, fig.height=4, echo=FALSE-------------------------
 knitr::include_graphics("exampleFig.png")
 
 ## -----------------------------------------------------------------------------
@@ -29,8 +29,8 @@ tree <- data.cecal$tree
 
 ## ----phy-tree-plot,fig.width=8, fig.height=8, fig.show='hold'-----------------
 # set random seed here so that you can get the same result every time you run the code
-set.seed(84)
-cecal.rsltlst <- phyloMed(Trt, M, Y, tree, fdr.alpha = 0.1, n.perm = 1e5, graph = TRUE)
+set.seed(123)
+cecal.rsltlst <- phyloMed(Trt, M, Y, tree = tree, fdr.alpha = 0.1, n.perm = 1e4, graph = "rectangular")
 
 # take a look at phyloseq-class object
 cecal.physeq <- cecal.rsltlst$clean.data
@@ -53,8 +53,8 @@ tree <- data.zeeviD$tree
 head(tree)
 
 ## ----tax-tree-plot,fig.width=8, fig.height=8, fig.show='hold',message=FALSE,warning=FALSE----
-# only show aysmptotic result
-demo.rsltlst <- phyloMed(Trt, M, Y, tree, graph = TRUE)
+# run asymptotic result by default
+demo.rsltlst <- phyloMed(Trt, M, Y, tree = tree, fdr.alpha = 0.1, graph = "circular")
 # take a look at phyloseq-class object
 demo.physeq <- demo.rsltlst$clean.data
 demo.physeq

@@ -3,10 +3,7 @@ title: "Tutorial: testing microbiome mediation effect using miMediation"
 author: "Qilin Hong"
 date: "Last compiled on `r format(Sys.time(), '%d %B, %Y')`"
 output: 
-  prettydoc::html_pretty:
-    theme: cayman
-    highlight: github
-    keep_md: true
+  pdf_document
 bibliography: references.bib 
 vignette: >
   %\VignetteIndexEntry{Tutorial: testing microbiome mediation effect using miMediation}
@@ -32,9 +29,9 @@ This is a practical tutorial on the use of `miMediation` package, which introduc
 
 ## A brief summary of the PhyloMed
 
-PhyloMed models microbiome mediation effect through a cascade of independent local mediation models of subcompositions on the internal nodes of the phylogenetic tree. Each local model captures the mediation effect of a subcomposition at a given taxonomic resolution. The method improves the power of the mediation test by enriching weak and sparse signals across mediating taxa that tend to cluster on the tree. PhyloMed enables us to test the overall mediation effect of the entire microbial community and pinpoint internal nodes with significant subcomposition mediation effects.
+PhyloMed models microbiome mediation effect through a cascade of independent local mediation models of subcompositions on the internal nodes of the phylogenetic tree. Each local model captures the mediation effect of a subcomposition at a given taxonomic resolution. PhyloMed enables us to test the overall mediation effect of the entire microbial community and pinpoint internal nodes with significant subcomposition mediation effects.
 
-```{r demo-plot, fig.width=8, fig.height=6, echo=FALSE}
+```{r demo-plot, fig.width=8, fig.height=4, echo=FALSE}
 knitr::include_graphics("exampleFig.png")
 ```
 
@@ -43,7 +40,7 @@ $$E\left\{ \log \left( \frac{M_{ij1}}{M_{ij2}}\right) \right\} = \alpha^{\rm T}_
 $$g\{E(Y_i)\} = \beta^{\rm T}_{jX} {\bf X}_i + \beta_{jT} T_i  + \beta_{j} \log\left(\frac{M_{ij1}}{M_{ij2}}\right)$$
 where $g(\cdot)$ is the link function depending on the type of the outcome and we omit the intercept term in both models as it can be absorbed into ${\bf X}_i$.  
 
-Under potential outcome framework (@vanderweele2015explanation) and assumptions of no unmeasured confounding variables, it leads to the null hypothesis $$H_0^j=\alpha_j\beta_j=0$$, which is equivalent to the union of three disjoint component null hypotheses
+The local mediation null hypothesis is expressed as $$H_0^j:\alpha_j\beta_j=0$$, which is equivalent to the union of three disjoint component null hypotheses
 
 \begin{align} 
 H^{j}_{00}&: \alpha_j = \beta_{j} = 0,\\
@@ -52,25 +49,23 @@ H^{j}_{01}&: \alpha_j = 0, \beta_{j} \neq 0.
 \end{align} 
 
 We define the mediation test statistic for $H_0^j$ as $$P_{\max_j}=\max(P_{\alpha_j},P_{\beta_j})$$
-The $P_{\alpha_j},P_{\beta_j}$ could be calculated via asymptotic approach or adaptive permutation approach when sample size is small. 
+The $P_{\alpha_j},P_{\beta_j}$ represent the $p$-value for testing $\alpha_j=0$ and $\beta_j=0$, respectively. These two $p$-values could be obtained via asymptotic approach or permutation approach. 
 
-In fact, $P_{\max_j}$ follows a mixture distribution with three components, each of which corresponds to one type of null hypothesis $H^j_{00}$, $H^j_{10}$, $H^j_{01}$. The $p$-value of mediation test in the $j$th local model is given by 
+Thus, we obtain the $p$-value of mediation test in the $j$th local model using the following formula:
 $$Pr(P_{\max_j} \leq p_{\max_j})=\pi_{00} p^2_{\max_j} + \pi_{10} p_{\max_j} Pr(P_{\alpha_j} \leq  p_{\max_j} \mid \alpha_j \neq 0) + \pi_{01} p_{\max_j} Pr(P_{\beta_j} \leq p_{\max_j} \mid \beta_j \neq 0)$$
-In this formula, we need to estimate three component probabilities: $\pi_{00}$, $\pi_{10}$, and $\pi_{01}$, and two power functions evaluated at $p_{\max_j}$: $Pr(P_{\alpha_j} \leq p_{\max_j} \mid \alpha_j \neq 0)$ and $Pr(P_{\beta_j} \leq p_{\max_j} \mid \beta_j \neq 0)$. There are two various methods (product, maxp) to estimate three component probabilities. Both are derived from JC's method (@jin2007estimating), which uses the empirical characteristic function and Fourier analysis to estimate $\pi_{0\bullet}$ (the proportion of null $\alpha_j=0$) and $\pi_{\bullet0}$ (the proportion of null $\beta_j=0$).
+In this formula, we need to estimate three component probabilities ($\pi_{00},\pi_{10},\pi_{01}$) representing the proportion of three null hypotheses ($H^{j}_{00},H^{j}_{10},H^{j}_{01}$).  and two power functions evaluated at $p_{\max_j}$. We implement two methods (product, maxp) to estimate $\pi_{00},\pi_{10},\pi_{01}$. 
 
-- "product" method: The estimates of $\pi_{00}$, $\pi_{10}$, $\pi_{01}$ are  $\hat{\pi}_{00}=\hat{\pi}_{0\bullet}\hat{\pi}_{\bullet0}/\hat{\pi}_0$, $\hat{\pi}_{10}=(1-\hat{\pi}_{0\bullet})\hat{\pi}_{\bullet0}/\hat{\pi}_0$, and
+- "product" method: 
+$\hat{\pi}_{00}=\hat{\pi}_{0\bullet}\hat{\pi}_{\bullet0}/\hat{\pi}_0$, $\hat{\pi}_{10}=(1-\hat{\pi}_{0\bullet})\hat{\pi}_{\bullet0}/\hat{\pi}_0$, and
 $\hat{\pi}_{01}=\hat{\pi}_{0\bullet}(1-\hat{\pi}_{\bullet0})/\hat{\pi}_0$, where $\hat{\pi}_0=\hat{\pi}_{0\bullet} + \hat{\pi}_{\bullet0}-\hat{\pi}_{0\bullet}\hat{\pi}_{\bullet0}$.
 
-- "maxp" method: The estimates of $\pi_{00}$, $\pi_{10}$, $\pi_{01}$ are 
+- "maxp" method: 
 $\hat{\pi}_{00}=(\hat{\pi}_{0\bullet}+\hat{\pi}_{\bullet0}-\hat{\pi}_0)/\hat{\pi}_0$, 
 $\hat{\pi}_{10}=(\hat{\pi}_0-\hat{\pi}_{0\bullet})/\hat{\pi}_0$, and
 $\hat{\pi}_{01}=(\hat{\pi}_0-\hat{\pi}_{\bullet0})/\hat{\pi}_0$, where 
-$\hat{\pi}_0$ is obtained from JC's method by using $p_{\max_j}$.
+$\hat{\pi}_{0\bullet}, \hat{\pi}_{\bullet0}, \hat{\pi}_0$ are estimated by applying Jin and Cai's method (@jin2007estimating) to$P_{\alpha_j},P_{\beta_j},P_{\max_j}$.
 
 After obtaining the $p$-values on all internal nodes, we apply Benjamini-Hochberg (BH) false discovery rate procedure (@benjamini1995controlling) to identify a collection of nodes on the phylogenetic tree with significant mediation effects. To test the global mediation null hypothesis $H_0: \cap_{j=1}^J H^j_0$, we apply the harmonic mean $p$-value (HMP) method (@wilson2019harmonic) to combine local mediation $p$-values.
-
-Specifically, the weighted harmonic mean of subcomposition mediation test $p$-values $p_1, \ldots, p_J$ is defined as $$\mathring{p}=\frac{\sum^J_{j=1}w_j}{\sum^J_{j=1}w_jp_j},$$
-where $w_j$'s are weights that sum to $1$ and we set $w_j = 1/J$ by default. The global test $p$-value can be obtained by calculating the tail probability from the $\mathring{p}$'s null distribution approximation.
 
 ## Application with phylognetic information: Cecal data
 
@@ -92,12 +87,12 @@ summary(Y)
 tree <- data.cecal$tree
 ```
 
-To run `phyloMed` function, the parameter treatment, mediators, outcome, phylogeny tree and pi.method are required. Other inputs are optional. Note that if `n.perm=1e5`, the function will output $p$-value calculated through adaptive permutation procedure as well and it will take $\sim 6$ minutes to output the result. You can set `verbose=TRUE` to keep track of the process. Here is an example described in the @hong2022phylomed. 
+To run `phyloMed` function, the minimum requirement is to provide `treatment`, `mediators`, `outcome`, `tree` information. In the chunk below, we set FDR = 0.1 (`fdr.alpha=0.1`) in identifying mediating nodes and visualize the results in the tree plot (`graph="rectangular"`). Note that if `n.perm=1e4`, the function will output $p$-value calculated through permutation procedure as well and it will take $\sim 3$ minutes to output the result. In general, permutation procedure can provide more accurate result when sample size is small (e.g., sample size < 100). However, it is slower than asymptotic procedure. You can set `verbose=TRUE` to keep track of the process. 
 
 ```{r phy-tree-plot,fig.width=8, fig.height=8, fig.show='hold'}
 # set random seed here so that you can get the same result every time you run the code
-set.seed(84)
-cecal.rsltlst <- phyloMed(Trt, M, Y, tree, fdr.alpha = 0.1, n.perm = 1e5, graph = TRUE)
+set.seed(123)
+cecal.rsltlst <- phyloMed(Trt, M, Y, tree = tree, fdr.alpha = 0.1, n.perm = 1e4, graph = "rectangular")
 
 # take a look at phyloseq-class object
 cecal.physeq <- cecal.rsltlst$clean.data
@@ -110,7 +105,7 @@ cecal.rslt$PhyloMed.P
 The output consists of four components:
 
   - `node.pval`: mediation $p$-values on each internal node of the phylogenetic tree.
-  - `sig.clade`: identified mediation nodes with their descendants.
+  - `sig.clade`: identified mediation node ids with their corresponding leaf-level descendant taxa name.
   - `null.prop`: estimated proportion of three disjoint component null hypotheses.
   - `global.pval`: global test $p$-value.
 
@@ -118,7 +113,7 @@ In the figure above, the size of the circle on internal node is proportional to 
 
 ## Application with taxonomic information: ZeeviD data
 
-When there is no phylogenetic information available, the `phyloMed` function could construct taxonomic tree based on the taxonomic information. Here we sampled 200 subjects out of 900 healthy subjects in a real microbiome dataset @zeevi2015personalized and divided them into two equal-sized treatment groups. We used the top 100 most abundant OTUs and the associated taxonomy table to run `phyloMed` function.
+When there is no phylogenetic information available, the `phyloMed` function could construct taxonomic tree based on the taxonomy table. The `data.zeeviD` is a simulated dataset based on a real gut microbiome dataset from a healthy cohort (@zeevi2015personalized). The mediation signal was added at "Order.Clostridiales". 
 
 ```{r}
 # Load data
@@ -135,8 +130,8 @@ head(tree)
 ```
 
 ```{r tax-tree-plot,fig.width=8, fig.height=8, fig.show='hold',message=FALSE,warning=FALSE}
-# only show aysmptotic result
-demo.rsltlst <- phyloMed(Trt, M, Y, tree, graph = TRUE)
+# run asymptotic result by default
+demo.rsltlst <- phyloMed(Trt, M, Y, tree = tree, fdr.alpha = 0.1, graph = "circular")
 # take a look at phyloseq-class object
 demo.physeq <- demo.rsltlst$clean.data
 demo.physeq

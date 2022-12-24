@@ -4,26 +4,26 @@
 #' The method leverages the hierarchical phylogeny relationship among different microbial taxa to decompose the
 #' complex mediation model on the full microbial composition into multiple simple independent local mediation models
 #' on subcompositions. The \code{phyloMed} function (a) performs the mediation test for the subcomposition at each internal node
-#' of the phylogenetic tree or taxonomic tree and pinpoint the mediating nodes with significant test p-values; and (b) combine all subcomposition 
+#' of the phylogenetic tree and pinpoint the mediating nodes with significant test p-values; and (b) combine all subcomposition 
 #' p-values to assess the overall mediation effect of the entire microbial community.
 #' 
-#' @details PhyloMed uses the treatment-mediator association test p-value and mediation-outcome association test p-value
+#' @details \code{phyloMed} could leverage phylogeny or taxonomy relationship among taxa. 
+#' If the \code{tree} is a unrooted and/or non-binary phylogenetic tree, \code{phyloMed} will preprocess the tree: 
+#' (a) root the tree with the longest tip branch as outgroup if it is unrooted; and/or 
+#' (b) resolve multichotomies into dichotomies based on the order they appear if it is non-binary. 
+#' If the \code{tree} is a taxonomy table, \code{phyloMed} will group taxa based on different levels of taxonomic ranks.
+#' \code{phyloMed} uses the treatment-mediator association test p-value and mediation-outcome association test p-value
 #' to construct the subcomposition mediation test statistic at each local model (Hong et al., Manuscript). The two p-values can come from
 #' either the asymptotic test or the permutation test. Asymptotic test is faster but less accurate when the study sample size is small.
 #' By default (\code{n.perm=NULL}), only asymptotic test will be performed. Otherwise, if \code{n.perm} is set to a positive number,
 #' results from two versions of PhyloMed will be output, one based on the asymptotic p-value and the other based on the permutation 
 #' p-value. Graph only highlights the mediating nodes identified from permutation version when both versions are performed. 
+#' By default (\code{graph=NULL}), graph will not be plotted. 
 #' 
 #' @param treatment A numeric vector of the treatment. 
-#' @param mediators A named numeric matrix containing microbiome abundance. Each row is a subject and each column is an OTU or a taxon. 
-#' Row name contains the subject ID and column name contains the taxon name. 
+#' @param mediators A named numeric matrix containing microbiome abundance. Each row is a subject and each column is a taxon. 
+#' Column name contains the taxon name. 
 #' @param outcome A numeric vector of continuous or binary outcome.
-#' @param tree A phylogenetic tree (\code{phylo-class} object) or a taxonomy table (\code{matrix-class} object). 
-#' The tip labels in the phylogenetic tree or the row names in the taxonomy table should overlap with the column names in the \code{mediators} matrix. 
-#' The column names in the taxonomy table should start from the higher level to lower level, e.g., from kingdom to genus.
-#' @seealso \code{\link{prepareTree}}
-#' @param pi.method An optional character string denotes the method to used in estimate proportion of null. 
-#' Default method is \code{"product"}, an alternative method is \code{"maxp"}.
 #' @param confounders An optional numeric vector or matrix containing confounders that may affect the 
 #' treatment, mediators and outcome. 
 #' Each row is a subject and each column is a specific confounder, e.g., age or sex. 
@@ -31,24 +31,31 @@
 #' @param interaction An optional logical value. If \code{TRUE}, the interaction term between treatment and mediator 
 #' will be taken into account. 
 #' Default is \code{FALSE}.
+#' @param tree A phylogenetic tree (\code{phylo-class} object) or a taxonomy table (\code{matrix-class} object). 
+#' The tip labels in the phylogenetic tree or the row names in the taxonomy table should overlap with the column names in the \code{mediators} matrix. 
+#' The column names in the taxonomy table should start from the higher level to lower level, e.g., from kingdom to genus. See Details.
+#' @param pi.method An optional character string denotes the method to used in estimate proportion of null. 
+#' Default method is \code{"product"}, an alternative method is \code{"maxp"}. Can be abbreviated.
 #' @param fdr.alpha An optional numeric value for the desired FDR significance level in identifying mediating nodes on the tree. 
 #' Default is \code{0.05}.
 #' @param n.perm An optional numeric value for the maximum number of permutations. 
 #' Default is \code{NULL}. See Details.
 #' @param verbose An optional logical value. If \code{TRUE}, information of the test on each node will be printed.
 #' Default is \code{FALSE}.
-#' @param graph An optional logical value. If \code{TRUE}, generate a graph that contains a phylogenetic tree or taxonomic tree with
-#' identified mediating nodes highlighted. 
-#' Default is \code{FALSE}. See Details.
+#' @param graph An optional character string denotes the layout of the graph, which contains a phylogenetic tree or taxonomic tree with
+#' identified mediating nodes highlighted. Can be \code{"circular"} or \code{"rectangular"}. Can be abbreviated.
+#' Default is \code{NULL}. See Details. 
 #' 
 #' @return 
 #' A \code{phyloseq}-class object named \code{clean.data} and a list named \code{rslt}.
 #' 
 #' \code{clean.data} contains the following components:
 #' \item{\code{sample_data}}{Input treatment, outcome and confounders.}
-#' \item{\code{otu_table}}{The abundance data for the taxa that are present on the tips of the \code{phy_tree}.}
-#' \item{\code{tax_table}}{The taxonomy table with rows exactly match the taxa in the \code{otu_table}.}
-#' \item{\code{phy_tree}}{The binary and rooted phylogenetic tree with tips exactly match the taxa in the \code{otu_table}.}
+#' \item{\code{otu_table}}{The abundance data for the taxa that are present on the tips of the \code{phy_tree} or on the rows of the \code{tax_table}.}
+#' \item{\code{tax_table}}{The taxonomy table with rows exactly match the taxa in the \code{otu_table}. \code{NULL} if input \code{tree} is a phylogeny tree.}
+#' \item{\code{phy_tree}}{The binary and rooted phylogenetic tree with tips exactly match the taxa in the \code{otu_table}: (a) The internal nodes are numbered 
+#' with value larger than the number of tips; (b) The internal nodes are numbered sequentially, with values increasing away from the root. 
+#' \code{NULL} if input \code{tree} is a taxonomy table.}
 #' 
 #' If \code{n.perm} is not \code{NULL}, the function will return two lists in \code{rslt} named \code{PhyloMed.A} and \code{PhyloMed.P}, respectively.
 #' Otherwise, only one list named \code{PhyloMed.A} will be returned.
@@ -56,12 +63,12 @@
 #' Each list contains the following components:
 #' \item{\code{node.pval}}{A numeric vector of subcomposition mediation p-values for all internal nodes.}
 #' \item{\code{sig.clade}}{A list of significant nodes with their descendants.}
-#' \item{\code{null.prop}}{A vector of the estimated proportion of different types of null hypotheses 
-#' across all local mediation tests.}
+#' \item{\code{null.prop}}{A vector of the estimated proportion of different types of null hypotheses across all local mediation tests.}
 #' \item{\code{global.pval}}{A global test p-value using harmonic mean.}
 #' 
-#' If \code{graph} is \code{TRUE}, the phylogenetic or taxonomic tree will be plot. The size of the circle at each internal node is proportional to 
-#' \eqn{-\log_{10}}(subcomposition p-value), the larger circle indicates a smaller p-value. The significant nodes are highlighted by blue rectangle.
+#' If \code{graph} is not \code{NULL}, the phylogenetic or taxonomic tree will be plotted. The layout depends on the input of \code{graph}. 
+#' The size of the circle at each internal node is proportional to 
+#' \eqn{-\log_{10}}(subcomposition p-value), the larger circle indicates a smaller p-value. The significant nodes are highlighted by blue rectangle. 
 #' 
 #' @author Qilin Hong \email{qhong8@@wisc.edu}
 #' @references 
@@ -76,26 +83,27 @@
 #' M = data.cecal$mediators
 #' Y = data.cecal$outcome
 #' tree = data.cecal$tree
-#' rslt.phylomed = phyloMed(Trt, M, Y, tree, graph = TRUE)
+#' rslt.phylomed = phyloMed(Trt, M, Y, tree = tree, graph = "rectangular")
 #' # Run test with taxonomy table
 #' Trt = data.zeeviD$treatment
 #' M = data.zeeviD$mediators
 #' Y = data.zeeviD$outcome
 #' tree = data.zeeviD$tree
-#' rslt.phylomed = phyloMed(Trt, M, Y, tree, graph = TRUE)
+#' rslt.phylomed = phyloMed(Trt, M, Y, tree = tree, graph = "circular")
 #' 
 #' @importFrom fdrtool gcmlcm
 #' @importFrom SKAT SKAT_Null_Model SKAT
 #' @importFrom phyloseq otu_table tax_table sample_data sample_names phyloseq
-#' @importFrom ape keep.tip
+#' @importFrom ape keep.tip root multi2di
 #' @importFrom MASS ginv
+#' @importFrom TreeTools Renumber
 #' @import ggplot2 ggtree harmonicmeanp data.table data.tree
 #' @export
 
-phyloMed <- function(treatment, mediators, outcome, tree, pi.method = "product", 
-                     confounders = NULL, interaction = FALSE, fdr.alpha = 0.05, 
-                     n.perm = NULL, verbose = FALSE, graph = FALSE){
-  #treatment=Trt; mediators=M; outcome=Y; pi.method = "product"; confounders = NULL;interaction = FALSE; fdr.alpha = 0.7; graph = TRUE;verbose=TRUE
+phyloMed <- function(treatment, mediators, outcome, confounders = NULL, interaction = FALSE, 
+                     tree, pi.method = "product", fdr.alpha = 0.05, 
+                     n.perm = NULL, verbose = FALSE, graph = NULL){
+  #treatment=Trt; mediators=M; outcome=Y; pi.method = "product"; n.perm = NULL; confounders = NULL;interaction = FALSE; fdr.alpha = 0.1; graph = "circular"; verbose=TRUE
   if(sum(is.na(cbind(treatment, mediators, outcome, confounders)))>0) stop("Input data contain NAs!")
   if(is.data.frame(treatment)) treatment = unlist(treatment)
   if(is.data.frame(mediators)) mediators = as.matrix(mediators)
@@ -169,14 +177,14 @@ phyloMed <- function(treatment, mediators, outcome, tree, pi.method = "product",
   }else{
     input.type = "tree"
     cat("Run phyloMed based on phylogenetic tree!")
-    tree = prepareTree(tree, verbose = verbose)
+    tree = .prepareTree(tree, verbose = verbose)
     if(all(colnames(mediators) %in% tree$tip.label)){
       if(ncol(mediators) == .ntaxa(tree)){
         mediators = mediators[,tree$tip.label]
       }else{
         cat("Prune the phylogenetic tree based on the column names of mediators!")
         tree.trim = keep.tip(tree, colnames(mediators))
-        tree = prepareTree(tree.trim, verbose = verbose)
+        tree = .prepareTree(tree.trim, verbose = verbose)
         mediators = mediators[,tree$tip.label]
       }
     }else if(all(tree$tip.label %in% colnames(mediators))){
@@ -186,7 +194,7 @@ phyloMed <- function(treatment, mediators, outcome, tree, pi.method = "product",
       taxa.cross = intersect(tree$tip.label, colnames(mediators))
       cat(sprintf("Prune the phylogenetic tree based on %g overlapped taxa!", length(taxa.cross)))
       tree.trim = keep.tip(tree, taxa.cross)
-      tree = prepareTree(tree.trim, verbose = verbose)
+      tree = .prepareTree(tree.trim, verbose = verbose)
       cat(sprintf("Subset the mediators based on %g overlapped taxa!", length(taxa.cross)))
       mediators = mediators[,tree$tip.label]
     }else{
@@ -195,6 +203,7 @@ phyloMed <- function(treatment, mediators, outcome, tree, pi.method = "product",
   }
   
   method = match.arg(tolower(pi.method), choices = c("product", "maxp"))
+  if(!is.null(graph)) layout.method = match.arg(tolower(graph), choices = c("circular", "rectangular"))
   if(verbose) cat(sprintf("Use %s's method to obtain probability of null hypotheses estimates\n", toupper(method)))
   
   if(is.null(confounders)){ 
@@ -731,7 +740,12 @@ phyloMed <- function(treatment, mediators, outcome, tree, pi.method = "product",
   
   if(input.type == "table"){
     if(length(sig.nodeID.asym) > 0){
-      sig.clade.asym = subtree[sig.nodeID.asym]
+      sig.clade.asym = lapply(subtree[sig.nodeID.asym], 
+                              function(x){
+                                tmp = unlist(strsplit(x, split = "\\.", ))
+                                return(as.vector(tab[which(tab[,which(ori.tab.colnames == tmp[1])] == tmp[2]), ncol(tab)]))
+                              })
+      names(sig.clade.asym) = subtree[sig.nodeID.asym]
     }else{
       sig.clade.asym = NULL
     }
@@ -747,22 +761,22 @@ phyloMed <- function(treatment, mediators, outcome, tree, pi.method = "product",
     names(rawp) = tree.vis$node.label
     node.name = subtree
     # all(node.name %in% tree.vis$node.label)
-    if(all(graph, is.null(n.perm))){
+    if(all(!is.null(graph), is.null(n.perm))){
       rawp[node.name] = rawp.asym
       tree.vis$node.label = rawp
       tree.vis$tip.label = gsub(paste0("^",ori.tab.colnames[length(ori.tab.colnames)],"\\."), "", tree.vis$tip.label)
       
-      g.asym = ggtree(tree.vis, layout="circular") +
+      g.asym = ggtree(tree.vis, layout=layout.method) +
         geom_point2(aes(subset=!isTip), shape=21, size=-log10(as.numeric(rawp))*3, fill = "red") +
         geom_tiplab(size=2) + 
         theme_tree(plot.margin=margin(5,5,5,5))
       if(length(sig.nodeID.asym) > 0) {
-        nodelab = tree.vis$node.label[sig.clade.asym]
+        nodelab = tree.vis$node.label[names(sig.clade.asym)]
         nodeids = nodeid(tree.vis, nodelab)
-        cladedat = data.frame(id=nodeids, class=LETTERS[1:length(sig.nodeID.asym)])
+        cladedat = data.frame(id=nodeids, class=names(sig.clade.asym))
         g.asym = g.asym +
           geom_hilight(data=cladedat, mapping=aes(node=id), alpha=.6, fill="steelblue") +
-          geom_cladelab(data=cladedat, mapping=aes(node=id, label=class), vjust=-.5, hjust=-.5, fontsize=5, fontface=4)
+          geom_cladelab(data=cladedat, mapping=aes(node=id, label=class), vjust=-.3, hjust=-.3, fontsize=3, fontface=4)
       }
       print(g.asym)
     }
@@ -772,22 +786,22 @@ phyloMed <- function(treatment, mediators, outcome, tree, pi.method = "product",
     taxa.names = tree$tip.label
     if(length(sig.nodeID.asym) > 0){
       sig.clade.asym = lapply(sig.nodeID.asym+K, function(x) taxa.names[which(treestructure$descendant[x,])])
-      names(sig.clade.asym) = as.character(sig.nodeID.asym+K)
+      names(sig.clade.asym) = paste0("Node", sig.nodeID.asym+K)
     }else{
       sig.clade.asym = NULL
     }
-    
-    if(all(graph, is.null(n.perm))){
+    names(rawp.asym) = paste0("Node", K + 1:length(rawp.asym))
+    if(all(!is.null(graph), is.null(n.perm))){
       tree.vis = tree
       tree.vis$node.label = rawp.asym
-      g.asym = ggtree(tree.vis, layout = "rectangular", branch.length = "none") + 
+      g.asym = ggtree(tree.vis, layout = layout.method, branch.length = "none") + 
         geom_point2(aes(subset=!isTip), shape=21, size=-log10(as.numeric(rawp.asym))*3, fill = "red") +
         geom_tiplab(size=2) + 
         theme_tree(plot.margin=margin(5,5,5,5))
       
       if(length(sig.nodeID.asym) > 0) {
-        labels = rep(NA, 2*K-1); labels[sig.nodeID.asym+K] = LETTERS[1:length(sig.nodeID.asym)]
-        g.asym = g.asym + geom_text2(aes(subset=!isTip, label=labels), vjust=-.5, hjust=-.5, angle = 0, size=5)
+        labels = rep(NA, 2*K-1); labels[sig.nodeID.asym+K] = names(sig.clade.asym)
+        g.asym = g.asym + geom_text2(aes(subset=!isTip, label=labels), vjust=-.3, hjust=-.3, angle = 0, size=3)
         for (i in 1:length(sig.nodeID.asym)) {
           g.asym = g.asym + geom_hilight(node = sig.nodeID.asym[i]+K, fill = "steelblue", alpha = .6)
         }
@@ -823,26 +837,31 @@ phyloMed <- function(treatment, mediators, outcome, tree, pi.method = "product",
     
     if(input.type == "table"){
       if(length(sig.nodeID.perm) > 0){
-        sig.clade.perm = subtree[sig.nodeID.perm]
+        sig.clade.perm = lapply(subtree[sig.nodeID.perm], 
+                                function(x){
+                                  tmp = unlist(strsplit(x, split = "\\.", ))
+                                  return(as.vector(tab[which(tab[,which(ori.tab.colnames == tmp[1])] == tmp[2]), ncol(tab)]))
+                                })
+        names(sig.clade.perm) = subtree[sig.nodeID.perm]
       }else{
         sig.clade.perm = NULL
       }
       names(rawp.perm) = subtree
-      if(graph){
+      if(!is.null(graph)){
         rawp[node.name] = rawp.perm
         tree.vis$node.label = rawp
         
-        g.perm = ggtree(tree.vis, layout="circular") +
+        g.perm = ggtree(tree.vis, layout=layout.method) +
           geom_point2(aes(subset=!isTip), shape=21, size=-log10(as.numeric(rawp))*3, fill = "red") +
           geom_tiplab(size=2) + 
           theme_tree(plot.margin=margin(5,5,5,5))
         if(length(sig.nodeID.perm) > 0) {
-          nodelab = tree.vis$node.label[sig.clade.perm]
+          nodelab = tree.vis$node.label[names(sig.clade.perm)]
           nodeids = nodeid(tree.vis, nodelab)
-          cladedat = data.frame(id=nodeids, class=LETTERS[1:length(sig.nodeID.perm)])
+          cladedat = data.frame(id=nodeids, class=names(sig.nodeID.perm))
           g.perm = g.perm +
             geom_hilight(data=cladedat, mapping=aes(node=id), alpha=.6, fill="steelblue") +
-            geom_cladelab(data=cladedat, mapping=aes(node=id, label=class), vjust=-.5, hjust=-.5, fontsize=5, fontface=4)
+            geom_cladelab(data=cladedat, mapping=aes(node=id, label=class), vjust=-.2, hjust=-.2, fontsize=3, fontface=4)
         }
         print(g.perm)
       }
@@ -851,21 +870,22 @@ phyloMed <- function(treatment, mediators, outcome, tree, pi.method = "product",
     if(input.type == "tree"){
       if(length(sig.nodeID.perm) > 0){
         sig.clade.perm = lapply(sig.nodeID.perm+K, function(x) taxa.names[which(treestructure$descendant[x,])])
-        names(sig.clade.perm) = as.character(sig.nodeID.perm+K)
+        names(sig.clade.perm) = paste0("Node", sig.nodeID.perm+K)
       }else{
         sig.clade.perm = NULL
       }
+      names(rawp.perm) = paste0("Node", K + 1:length(rawp.perm))
       
-      if(graph){
+      if(!is.null(graph)){
         tree.vis = tree
         tree.vis$node.label = rawp.perm
-        g.perm = ggtree(tree.vis, layout = "rectangular", branch.length = "none") + 
+        g.perm = ggtree(tree.vis, layout = layout.method, branch.length = "none") + 
           geom_point2(aes(subset=!isTip), shape=21, size=-log10(as.numeric(rawp.asym))*3, fill = "red") +
           geom_tiplab(size=3) + 
           theme_tree(plot.margin=margin(5,5,5,5))
         if(length(sig.nodeID.perm) > 0) {
-          labels = rep(NA, 2*K-1); labels[sig.nodeID.perm+K] = LETTERS[1:length(sig.nodeID.perm)]
-          g.perm = g.perm + geom_text2(aes(subset=!isTip, label=labels), vjust=-.5, hjust=-.5, angle = 0, size=5)
+          labels = rep(NA, 2*K-1); labels[sig.nodeID.perm+K] = names(sig.clade.perm)
+          g.perm = g.perm + geom_text2(aes(subset=!isTip, label=labels), vjust=-.3, hjust=-.3, angle = 0, size=3)
           for (i in 1:length(sig.nodeID.perm)) {
             g.perm = g.perm + geom_hilight(node = sig.nodeID.perm[i]+K, fill = "steelblue", alpha = .6)
           }
@@ -1461,7 +1481,8 @@ phyloMed <- function(treatment, mediators, outcome, tree, pi.method = "product",
   ## Calculate Q under the null by permutation
   Q.perm = NULL
   Qj.perm = NULL
-  for (pp in 1:100){
+  set.seed(126)
+  for (pp in 1:1000){
     x.perm = sample(X)
     Q.temp.perm = t(as.numeric(as.matrix(Y1-Y1.bar))/rep(1, n))*rep(x.perm, each=p)
     Q.half.perm = apply(matrix(Q.temp.perm, nrow=p), 1, sum)
@@ -1487,4 +1508,54 @@ phyloMed <- function(treatment, mediators, outcome, tree, pi.method = "product",
     est = summary(glm(outcome ~ G + cbind(conf[,-1], Trt), family = "binomial"))$coefficients[1+1:m,1] 
   }
   return(list(stat=stat, est=est, pval=pval))
+}
+
+
+
+.prepareTree <- function(tree, verbose = FALSE){
+  tree$edge = tree$edge[order(tree$edge[,2]),] # order the tips
+  if(.is_binary(tree)){
+    if(verbose) cat("The phylogeny tree is already binary!\n")
+    if(.is_rooted(tree, .ntaxa(tree))){
+      tree.new = tree
+    }else{
+      outgroup = .pick_new_outgroup(tree)
+      if(verbose) cat("Root the tree!\n")
+      tree.new = root(tree, outgroup = outgroup, resolve.root = TRUE)
+    }
+  }else{
+    if(.is_rooted(tree, .ntaxa(tree))){
+      if(verbose) cat("Resolve the multichotomies in the order they appear on the tree!\n")
+      tree.new = multi2di(tree, random = FALSE)
+    }else{
+      outgroup = .pick_new_outgroup(tree)
+      if(verbose) cat("Root the tree!\n")
+      tree.new = root(tree, outgroup = outgroup, resolve.root = TRUE)
+      if(verbose) cat("Resolve the multichotomies in the order they appear on the tree!\n")
+      tree.new = multi2di(tree.new, random = FALSE)
+    }
+  }
+  tree.new = Renumber(tree.new) # conform to certain principle
+  return(tree.new)
+}
+
+# calculate the number of taxa
+.ntaxa <- function(tree){
+  length(tree$tip.label)
+}
+# check whether the tree is not
+.is_rooted <- function(tree, K){
+  if(!is.null(tree$root.edge)) return(TRUE)
+  if(tabulate(tree$edge[,1])[K+1]>2) FALSE else TRUE
+}
+# check whether the tree is binary
+.is_binary <- function(tree){
+  .ntaxa(tree)-tree$Nnode+.is_rooted(tree,.ntaxa(tree)) == 2
+}
+.pick_new_outgroup <- function(tree.unrooted){
+  treeDT = cbind(cbind(tree.unrooted$edge, tree.unrooted$edge.length)[1:.ntaxa(tree.unrooted),], tree.unrooted$tip.label)
+  colnames(treeDT) = c("from", "to", "length", "id")
+  # Take the longest terminal branch as outgroup
+  new.outgroup = treeDT[which.max(treeDT[, "length"]),"id"]
+  return(new.outgroup)
 }
