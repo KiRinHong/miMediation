@@ -119,7 +119,7 @@ rslt.phylomed = phyloMed(Trt, M, Y, tree = tree, graph = "circular")
 
 }
 \references{
-Hong, Q., Chen G., and Tang Z-Z.. PhyloMed: a phylogeny-based test of mediation effect in microbiome. Manuscript.
+Hong, Q., Chen, G., & Tang, Z. Z. (2023). PhyloMed: a phylogeny-based test of mediation effect in microbiome. \emph{Genome Biology}, 24(1), 1-21.
 }
 \author{
 Qilin Hong \email{qhong8@wisc.edu}

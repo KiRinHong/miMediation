@@ -72,7 +72,7 @@
 #' 
 #' @author Qilin Hong \email{qhong8@@wisc.edu}
 #' @references 
-#' Hong, Q., Chen, G., & Tang, Z. Z. (2023). PhyloMed: a phylogeny-based test of mediation effect in microbiome. Genome Biology, 24(1), 1-21.
+#' Hong, Q., Chen, G., & Tang, Z. Z. (2023). PhyloMed: a phylogeny-based test of mediation effect in microbiome. \emph{Genome Biology}, 24(1), 1-21.
 #' 
 #' @keywords PhyloMed
 #' @examples
