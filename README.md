@@ -21,6 +21,13 @@ You can install the package from github with:
 ``` r
 devtools::install_github("KiRinHong/miMediation")
 ```
+
+If you have old version installed, you can install the up-to-date version from github with:
+
+``` r
+devtools::install_github("KiRinHong/miMediation, force = TRUE")
+```
+
 You can download the [package source](https://github.com/KiRinHong/miMediation/blob/main/miMediation_0.2.tar.gz) and install it manually with:
 
 ``` r
