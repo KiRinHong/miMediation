@@ -576,7 +576,11 @@ phyloMed <- function(treatment, mediators, outcome, confounders = NULL, interact
       }
       
       # compute residual forming matrix Rconf (Smith's method)
-      Rconf = diag(nrow(conf)) - conf %*% solve(t(conf) %*% conf) %*% t(conf)
+      if(ncol(conf) == 1){
+        Rconf = diag(nrow(conf))
+      }else{
+        Rconf = diag(nrow(conf[,-1,drop=FALSE])) - conf[,-1,drop=FALSE] %*% solve(t(conf[,-1,drop=FALSE]) %*% conf[,-1,drop=FALSE]) %*% t(conf[,-1,drop=FALSE])
+      }
       
       mod.full = summary(glm(G~0+conf+Trt,family = quasi()))
       est = mod.full$coefficients["Trt","Estimate"]
