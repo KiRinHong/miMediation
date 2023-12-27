@@ -24,7 +24,7 @@ devtools::install_github("KiRinHong/miMediation")
 You can download the [package source](https://github.com/KiRinHong/miMediation/blob/main/miMediation_0.2.tar.gz) and install it manually with:
 
 ``` r
-install.packages("miMediation_0.1.tar.gz", repos = NULL, type ="source", dependencies = c("Depends", "Imports")) 
+install.packages("miMediation_0.2.tar.gz", repos = NULL, type ="source", dependencies = c("Depends", "Imports")) 
 ```
 
 ## Troubleshoot Dependencies
