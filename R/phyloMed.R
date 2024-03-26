@@ -218,6 +218,7 @@ phyloMed <- function(treatment, mediators, outcome, confounders = NULL, interact
   
   Trt.ori = treatment
   outcome.ori = outcome
+  outcome_type = ifelse(length(unique(outcome)) > 2, "C", "D")
   M = mediators
   if(input.type == "table"){
     K = 0
@@ -353,35 +354,35 @@ phyloMed <- function(treatment, mediators, outcome, confounders = NULL, interact
               pval.alpha.asym = c(pval.alpha.asym, pval)
             }
             
-            if(length(unique(outcome)) > 2) {
+            if(outcome_type == "C") {
               # continuous traits
               if(interaction){
                 obj = SKAT_Null_Model(outcome~0+conf+Trt, out_type = "C")
-                TestBeta = .test_beta(outcome, G2, Trt, conf, obj = obj, test.type = "vc")
+                TestBeta = .test_beta(outcome, G2, Trt, conf, obj = obj, test.type = "vc", outcome_type = outcome_type)
               }else{
                 if(is.matrix(G)){
                   obj = SKAT_Null_Model(outcome~0+conf+Trt, out_type = "C")
-                  TestBeta = .test_beta_vc(outcome, G, Trt, conf, obj = obj) 
+                  TestBeta = .test_beta_vc(outcome, G, Trt, conf, obj = obj, outcome_type = outcome_type) 
                 }else{
                   mod = summary(lm(outcome~cbind(conf[,-1], Trt)))
                   mod.s2 = mod$sigma^2
                   mod.resid = mod$residuals
-                  TestBeta = .test_beta(outcome, G, Trt, conf, resid.obs = mod.resid, s2.obs = mod.s2, test.type = "mv")
+                  TestBeta = .test_beta(outcome, G, Trt, conf, resid.obs = mod.resid, s2.obs = mod.s2, test.type = "mv", outcome_type = outcome_type)
                 }
               }
             }else{
               # binary traits
               if(interaction){
                 obj = SKAT_Null_Model(outcome~0+conf+Trt, out_type = "D")
-                TestBeta = .test_beta(outcome, G2, Trt, conf, obj = obj, test.type = "vc")
+                TestBeta = .test_beta(outcome, G2, Trt, conf, obj = obj, test.type = "vc", outcome_type = outcome_type)
               }else{
                 if(is.matrix(G)){
                   obj = SKAT_Null_Model(outcome~0+conf+Trt, out_type = "D")
-                  TestBeta = .test_beta_vc(outcome, G, Trt, conf, obj = obj)
+                  TestBeta = .test_beta_vc(outcome, G, Trt, conf, obj = obj, outcome_type = outcome_type)
                 }else{
                   mod = glm(outcome~cbind(conf[,-1], Trt), family = "binomial")
                   mod.est = mod$coefficients
-                  TestBeta = .test_beta(outcome, G, Trt, conf, est.obs = mod.est, test.type = "mv")
+                  TestBeta = .test_beta(outcome, G, Trt, conf, est.obs = mod.est, test.type = "mv", outcome_type = outcome_type)
                 }
               }
             }
@@ -450,19 +451,19 @@ phyloMed <- function(treatment, mediators, outcome, confounders = NULL, interact
                 beta.stat.perm = numeric(B.max)
                 while (Nexc < R.sel & m < B.max) {
                   if(interaction){
-                    tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G2, Trt, conf, obj = obj, test.type = "vc") 
+                    tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G2, Trt, conf, obj = obj, test.type = "vc", outcome_type = outcome_type) 
                   }else{
-                    if(length(unique(outcome)) > 2){
+                    if(outcome_type == "C"){ # length(unique(outcome)) > 2
                       if(is.matrix(G)){
-                        tmp_beta = .test_beta_vc(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, obj = obj) 
+                        tmp_beta = .test_beta_vc(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, obj = obj, outcome_type = outcome_type) 
                       }else{
-                        tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, resid.obs = mod.resid, s2.obs = mod.s2, test.type = "mv")
+                        tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, resid.obs = mod.resid, s2.obs = mod.s2, test.type = "mv", outcome_type = outcome_type)
                       }
                     }else{
                       if(is.matrix(G)){
-                        tmp_beta = .test_beta_vc(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, obj = obj)
+                        tmp_beta = .test_beta_vc(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, obj = obj, outcome_type = outcome_type)
                       }else{
-                        tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, est.obs = mod.est, test.type = "mv")
+                        tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, est.obs = mod.est, test.type = "mv", outcome_type = outcome_type)
                       }
                     }
                   }
@@ -601,26 +602,26 @@ phyloMed <- function(treatment, mediators, outcome, confounders = NULL, interact
       z.stat.alpha[i-K] = sqrt(stat)*sign(est)
       pval.alpha.asym[i-K] = pval
       
-      if(length(unique(outcome)) > 2) {
+      if(outcome_type == "C") {
         # continuous traits
         if(interaction){
           obj = SKAT_Null_Model(outcome~0+conf+Trt, out_type = "C")
-          TestBeta = .test_beta(outcome, G2, Trt, conf, obj = obj, test.type = "vc") # est[1] ~ mediator est[2] ~ exposure * mediator
+          TestBeta = .test_beta(outcome, G2, Trt, conf, obj = obj, test.type = "vc", outcome_type = outcome_type) # est[1] ~ mediator est[2] ~ exposure * mediator
         }else{
           mod = summary(lm(outcome~cbind(conf[,-1], Trt)))
           mod.s2 = mod$sigma^2
           mod.resid = mod$residuals
-          TestBeta = .test_beta(outcome, G, Trt, conf, resid.obs = mod.resid, s2.obs = mod.s2, test.type = "mv")
+          TestBeta = .test_beta(outcome, G, Trt, conf, resid.obs = mod.resid, s2.obs = mod.s2, test.type = "mv", outcome_type = outcome_type)
         }
       } else {
         # binary traits
         if(interaction){
           obj = SKAT_Null_Model(outcome~0+conf+Trt, out_type = "D")
-          TestBeta = .test_beta(outcome, G2, Trt, conf, obj = obj, test.type = "vc") # est[1] ~ mediator est[2] ~ exposure * mediator
+          TestBeta = .test_beta(outcome, G2, Trt, conf, obj = obj, test.type = "vc", outcome_type = outcome_type) # est[1] ~ mediator est[2] ~ exposure * mediator
         }else{
           mod = glm(outcome~cbind(conf[,-1], Trt), family = "binomial")
           mod.est = mod$coefficients
-          TestBeta = .test_beta(outcome, G, Trt, conf, est.obs = mod.est, test.type = "mv")
+          TestBeta = .test_beta(outcome, G, Trt, conf, est.obs = mod.est, test.type = "mv", outcome_type = outcome_type)
         }
       }
       
@@ -688,12 +689,12 @@ phyloMed <- function(treatment, mediators, outcome, confounders = NULL, interact
           while (Nexc < R.sel & m < B.max) {
             if(interaction){
               # est[1] ~ mediator est[2] ~ exposure * mediator
-              tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G2, Trt, conf, obj = obj, test.type = "vc") 
+              tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G2, Trt, conf, obj = obj, test.type = "vc", outcome_type = outcome_type) 
             }else{
-              if(length(unique(outcome)) > 2){
-                tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, resid.obs = mod.resid, s2.obs = mod.s2, test.type = "mv")
+              if(outcome_type == "C"){
+                tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, resid.obs = mod.resid, s2.obs = mod.s2, test.type = "mv", outcome_type = outcome_type)
               }else{
-                tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, est.obs = mod.est, test.type = "mv")
+                tmp_beta = .test_beta(outcome, Rconf[sample(nrow(Rconf)),] %*% G, Trt, conf, est.obs = mod.est, test.type = "mv", outcome_type = outcome_type)
               }
             }
             if(tmp_beta$stat >= TestBeta$stat) Nexc = Nexc + 1
@@ -1134,7 +1135,7 @@ phyloMed <- function(treatment, mediators, outcome, confounders = NULL, interact
   return(list(stat=stat, pval=pval))
 }
 # Test beta in outcome model
-.test_beta <- function(outcome, G, Trt, conf, resid.obs=NULL, s2.obs=NULL, est.obs=NULL, obj=NULL, test.type="mv"){
+.test_beta <- function(outcome, G, Trt, conf, resid.obs=NULL, s2.obs=NULL, est.obs=NULL, obj=NULL, test.type="mv", outcome_type="C"){
   m = ncol(G)
   n = nrow(G)
   if(is.vector(G)){
@@ -1143,7 +1144,7 @@ phyloMed <- function(treatment, mediators, outcome, confounders = NULL, interact
   }
   ## get U and V
   if(test.type=="mv"){
-    tmp = .cal_sumstats(outcome, G, cbind(conf[,-1], Trt), resid.obs, s2.obs, est.obs)
+    tmp = .cal_sumstats(outcome, G, cbind(conf[,-1], Trt), resid.obs, s2.obs, est.obs, outcome_type)
     U = tmp$U
     V = tmp$V
     
@@ -1156,7 +1157,7 @@ phyloMed <- function(treatment, mediators, outcome, confounders = NULL, interact
     stat = qchisq(1-pval, df=1)
   }
   ## estimate parameters
-  if(length(unique(outcome)) > 2 ){
+  if(outcome_type == "C"){
     # continuous trait
     est = summary(lm(outcome ~ G + cbind(conf[,-1], Trt)))$coefficients[1+1:m,1] 
   }else{
@@ -1169,7 +1170,7 @@ phyloMed <- function(treatment, mediators, outcome, confounders = NULL, interact
 
 # modify Lan's code to Bowen: cal_score_sumstats.R 07/09/2019
 # continuous: resid/s2 binary: est
-.cal_sumstats <- function(Y, G, covariates, resid, s2, est){
+.cal_sumstats <- function(Y, G, covariates, resid, s2, est, outcome_type){
   m = ncol(G)
   n = nrow(G)
   if(is.vector(G)){
@@ -1181,7 +1182,7 @@ phyloMed <- function(treatment, mediators, outcome, confounders = NULL, interact
   }
   
   X1 <- model.matrix(Y~covariates)
-  if(length(unique(Y)) > 2 ) {
+  if(outcome_type == "C") {
     # continuous traits
     W = t(G) %*% G-
       (t(G) %*% X1) %*%
@@ -1506,11 +1507,11 @@ phyloMed <- function(treatment, mediators, outcome, confounders = NULL, interact
   return(list(stat = stat, pval = pval))
 }
 
-.test_beta_vc <- function(outcome, G, Trt, conf, obj){
+.test_beta_vc <- function(outcome, G, Trt, conf, obj, outcome_type){
   m = ncol(G)
   pval = SKAT(G, obj, is_check_genotype=FALSE, kernel="linear")$p.value
   stat = qchisq(1-pval, df=1)
-  if(length(unique(outcome)) > 2 ){
+  if(outcome_type == "C"){
     # continuous trait
     est = summary(lm(outcome ~ G + cbind(conf[,-1], Trt)))$coefficients[1+1:m,1] 
   }else{

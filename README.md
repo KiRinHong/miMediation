@@ -80,9 +80,13 @@ Please use the [issue tracker](https://github.com/KiRinHong/miMediation/issues) 
 
 ## News
 
-- Version 0.1 (06/12/2023): Version for publication.
-- Version 0.2 (12/27/2023): Minor change. When there is no confounding variable, perform the simple permutation. Rewrote the code for the Smith's permutation.
-- Version 0.3 (03/25/2024): Minor change. Address scenarios where the mediator matrix is rank-deficient in certain subcompositions.
+- Version 0.1 (06/12/2023): Initial version released for publication.
+- Version 0.2 (12/27/2023): Minor update. 
+  - Implemented simple permutation when no confounding variable is present.
+  - Refactored the code for Smith's permutation.
+- Version 0.3 (03/25/2024): Minor enhancements. 
+  - Address scenarios where the mediator matrix is rank-deficient in certain subcompositions. 
+  - Added an intermediate argument outcome_type to handle cases with only two unique values in the continuous outcome.
 
 ## License
 
