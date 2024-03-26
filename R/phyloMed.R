@@ -120,10 +120,10 @@ phyloMed <- function(treatment, mediators, outcome, confounders = NULL, interact
     if(any(is.matrix(tree), is.data.frame(tree))){
       if(is.data.frame(tree)) tax.tab = as.matrix(tree)
       if(is.matrix(tree)) tax.tab = tree
-      cat("No phylogenetic tree available, construct taxonomic tree!")
+      cat("No phylogenetic tree available, construct taxonomic tree!\n")
       if(dim(tax.tab)[1] < dim(tax.tab)[2]){
         tax.tab = t(tax.tab)
-        cat("Reorgnize the taxonomy table with taxonomic ranks as columns!")
+        cat("Reorgnize the taxonomy table with taxonomic ranks as columns!\n")
       }
       if(any(is.na(tax.tab))) stop("Taxonomy table contains NAs!")
       empty.sum = apply(tax.tab, 1, function(x) sum(grepl("^\\s*$", x)))
@@ -155,18 +155,18 @@ phyloMed <- function(treatment, mediators, outcome, confounders = NULL, interact
         if(ncol(mediators) == nrow(tab)){
           mediators = mediators[,rownames(tab)]
         }else{
-          cat("Prune the taxonomic table based on the column names of mediators!")
+          cat("Prune the taxonomic table based on the column names of mediators!\n")
           tab = tab[colnames(mediators),]
           mediators = mediators[,rownames(tab)]
         }
       }else if(all(rownames(tab) %in% colnames(mediators))){
-        cat("Subset the mediators based on the taxonomy table!")
+        cat("Subset the mediators based on the taxonomy table!\n")
         mediators = mediators[,rownames(tab)]
       }else if(length(intersect(rownames(tab), colnames(mediators))) > 0){
         taxa.cross = intersect(rownames(tab), colnames(mediators))
-        cat(sprintf("Prune the taxonomy table based on %g overlapped taxa!", length(taxa.cross)))
+        cat(sprintf("Prune the taxonomy table based on %g overlapped taxa!\n", length(taxa.cross)))
         tab = tab[taxa.cross,]
-        cat(sprintf("Subset the mediators based on %g overlapped taxa!", length(taxa.cross)))
+        cat(sprintf("Subset the mediators based on %g overlapped taxa!\n", length(taxa.cross)))
         mediators = mediators[,rownames(tab)]
       }else{
         stop("The column names of mediators do not match the row names of taxonomic table!")
@@ -176,26 +176,26 @@ phyloMed <- function(treatment, mediators, outcome, confounders = NULL, interact
     }
   }else{
     input.type = "tree"
-    cat("Run phyloMed based on phylogenetic tree!")
+    cat("Run phyloMed based on phylogenetic tree!\n")
     tree = .prepareTree(tree, verbose = verbose)
     if(all(colnames(mediators) %in% tree$tip.label)){
       if(ncol(mediators) == .ntaxa(tree)){
         mediators = mediators[,tree$tip.label]
       }else{
-        cat("Prune the phylogenetic tree based on the column names of mediators!")
+        cat("Prune the phylogenetic tree based on the column names of mediators!\n")
         tree.trim = keep.tip(tree, colnames(mediators))
         tree = .prepareTree(tree.trim, verbose = verbose)
         mediators = mediators[,tree$tip.label]
       }
     }else if(all(tree$tip.label %in% colnames(mediators))){
-      cat("Subset the mediators based on the tip labels on the tree!")
+      cat("Subset the mediators based on the tip labels on the tree!\n")
       mediators = mediators[,tree$tip.label]
     }else if(length(intersect(tree$tip.label, colnames(mediators))) > 0){
       taxa.cross = intersect(tree$tip.label, colnames(mediators))
-      cat(sprintf("Prune the phylogenetic tree based on %g overlapped taxa!", length(taxa.cross)))
+      cat(sprintf("Prune the phylogenetic tree based on %g overlapped taxa!\n", length(taxa.cross)))
       tree.trim = keep.tip(tree, taxa.cross)
       tree = .prepareTree(tree.trim, verbose = verbose)
-      cat(sprintf("Subset the mediators based on %g overlapped taxa!", length(taxa.cross)))
+      cat(sprintf("Subset the mediators based on %g overlapped taxa!\n", length(taxa.cross)))
       mediators = mediators[,tree$tip.label]
     }else{
       stop("The column names of mediators do not match the tip labels!")
@@ -231,7 +231,7 @@ phyloMed <- function(treatment, mediators, outcome, confounders = NULL, interact
     if(!is.null(n.perm)){
       R.sel = .choose_r(fdr.alpha/K, 0.05)
       if(R.sel > B.max) cat(sprintf("The maximal permutation times (%g) is smaller than the chosen maximal number of successes (%g). 
-    The permutation p-value may not be precise enough. Please increase the maxmimal permutation times!", B.max, R.sel))
+    The permutation p-value may not be precise enough. Please increase the maxmimal permutation times!\n", B.max, R.sel))
       if(verbose){
         cat(sprintf("Adapative permutation procedure perfroms %g times at most\n", B.max))
         cat(sprintf("Adapative permutation procedure requires %g exceeds\n", R.sel))
@@ -296,6 +296,11 @@ phyloMed <- function(treatment, mediators, outcome, confounders = NULL, interact
             if(interaction){
               condition1 = (qr(cbind(Trt,G2))$rank < (1+ncol(G2)))
               if(all(condition1, verbose)) cat("Matrix (T, G, Trt*G) is not full rank, skip node\n")
+            }else{
+              if(!is.vector(G)){
+                condition1 = (qr(cbind(Trt,G))$rank < (1+ncol(G))) # add on 3/25/2024, handle the case that G is not full rank
+                if(all(condition1, verbose)) cat("Matrix (T, G) is not full rank, skip node\n")
+              }
             }
             
             # remove the subjects with all subcomponents being zero may result in collinearity
@@ -316,6 +321,7 @@ phyloMed <- function(treatment, mediators, outcome, confounders = NULL, interact
               z.stat.beta = c(z.stat.beta, NA)
               pval.beta.asym = c(pval.beta.asym, NA)
               pval.beta.perm = c(pval.beta.perm, NA)
+              subtree = c(subtree, current.node)
               next
             }
             subtree = c(subtree, current.node)

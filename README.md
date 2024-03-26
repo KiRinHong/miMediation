@@ -1,10 +1,10 @@
-## miMediation (Version 0.2)
+## miMediation
 
 [miMediation](https://github.com/KiRinHong/miMediation) is a R package for performing phylogeny-based mediation test [(PhyloMed)](https://github.com/KiRinHong/PhyloMed) for microbiome data.
 
 See the following for comprehensive and up-to-date documentation:
 
-- The [miMediation R package manual](https://github.com/KiRinHong/miMediation/blob/main/miMediation_0.2.pdf).
+- The [miMediation R package manual](https://github.com/KiRinHong/miMediation/blob/main/miMediation_0.1.pdf).
 - The [tutorial walkthrough of the proposed PhyloMed](https://github.com/KiRinHong/miMediation/blob/main/doc/miMediation.pdf).
 - The article: Hong, Q., Chen, G., & Tang, Z. Z. (2023). [PhyloMed: a phylogeny-based test of mediation effect in microbiome.](https://doi.org/10.1186/s13059-023-02902-3) Genome Biology, 24(1), 1-21.
 
@@ -21,19 +21,17 @@ You can install the package from github with:
 ``` r
 devtools::install_github("KiRinHong/miMediation")
 ```
-
-If you have old version installed, you can install the up-to-date version from github with:
-
-``` r
-devtools::install_github("KiRinHong/miMediation, force = TRUE")
-```
-
-You can download the [package source](https://github.com/KiRinHong/miMediation/blob/main/miMediation_0.2.tar.gz) and install it manually with:
+You can download the [package source](https://github.com/KiRinHong/miMediation/blob/main/miMediation_0.3.tar.gz) and install it manually with:
 
 ``` r
-install.packages("miMediation_0.2.tar.gz", repos = NULL, type ="source", dependencies = c("Depends", "Imports")) 
+install.packages("miMediation_0.3.tar.gz", repos = NULL, type ="source", dependencies = c("Depends", "Imports")) 
 ```
 
+You can force installation if you already have old version with:
+
+``` r
+devtools::install_github("KiRinHong/miMediation", force = TRUE)
+```
 ## Troubleshoot Dependencies
 
 At this point, there may be complaints about missing dependencies. To install missing dependencies on either [CRAN](https://cran.r-project.org/) or [Bioconductor](http://bioconductor.org/install/), start a fresh R session and enter the following:
@@ -69,16 +67,22 @@ If you install the package manually from source, a vignette describing the use o
 vignette("miMediation", package = "miMediation")
 ```
 
-Otherwise, it will not build vignette by default if you install the package from github because they’re time consuming and may require additional packages (here, require `prettydoc` R package, install it before building vigentte). You can force building (take ~7 mins) with:
+Otherwise, it will not build vignette by default if you install the package from github because they are time consuming and may require additional packages (here, require `prettydoc` R package, install it before building vignette). You can force building (take ~7 mins) with:
 
 ``` r
 devtools::install_github("KiRinHong/miMediation", build_vignettes = TRUE)
 ```
-Then, the vignette would be availabe from within R.
+Then, the vignette would be available from within R.
 
 ## Getting help
 
 Please use the [issue tracker](https://github.com/KiRinHong/miMediation/issues) to post any bugs, suggestions, or the installation problem.
+
+## Version
+
+- 0.1 (06/12/2023): Version for publication
+- 0.2 (12/27/2023): Improve and refine the Smith's permutation method
+- 0.3 (03/25/2024): Address scenarios where the mediator matrix is rank-deficient in certain subcompositions
 
 ## License
 
