@@ -27,7 +27,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-This is a practical tutorial on the use of `miMediation` package, which introduces a phylogeny-based mediation test (PhyloMed) for high-dimensional microbial composition mediators. The methodology is described in detail in the @hong2022phylomed.
+This is a practical tutorial on the use of `miMediation` package, which introduces a phylogeny-based mediation test (PhyloMed) for high-dimensional microbial composition mediators. The methodology is described in detail in the @hong2023phylomed.
 
 ## A brief summary of the PhyloMed
 

@@ -78,7 +78,7 @@ Then, the vignette would be available from within R.
 
 Please use the [issue tracker](https://github.com/KiRinHong/miMediation/issues) to post any bugs, suggestions, or the installation problem.
 
-## News Version
+## News
 
 - Version 0.1 (06/12/2023): Version for publication.
 - Version 0.2 (12/27/2023): Minor change. When there is no confounding variable, perform the simple permutation. Rewrote the code for the Smith's permutation.
